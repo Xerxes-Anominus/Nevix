@@ -16,6 +16,7 @@ import mindustry.Vars;
 import mindustry.ctype.UnlockableContent;
 import mindustry.entities.bullet.BulletType;
 import mindustry.gen.Icon;
+import mindustry.gen.Tex;
 import mindustry.graphics.Pal;
 import mindustry.type.Item;
 import mindustry.type.ItemStack;
@@ -224,17 +225,40 @@ public class NevixTurret extends ItemTurret {
             cont.add(content).grow().pad(5f);
         }
 
-        /** Tab Main: icon + stat. Không hiện tài nguyên trong core. */
+        /** Tab Main: ô Ảnh bên trái, ô Thông số bên phải. Không hiện tài nguyên trong core. */
         protected void buildMainTab(Table table) {
-            TextureRegion icon = Core.atlas.find(block.name + "-icon");
-            if (!icon.found()) icon = Core.atlas.find("clear");
+            // Ô ảnh
+            Table imageBox = new Table();
+            imageBox.background(Tex.pane);
+            imageBox.image(getBlockImage()).size(128f).pad(16f);
 
-            table.image(icon).size(120f).pad(10f).row();
-
+            // Ô thông số (cuộn được nếu dài)
             Table stats = new Table();
             stats.top().left();
             getStats(stats);
-            table.add(stats).growX().row();
+
+            ScrollPane statsPane = new ScrollPane(stats);
+            statsPane.setScrollingDisabled(true, false);
+            statsPane.setFadeScrollBars(false);
+
+            Table statsBox = new Table();
+            statsBox.background(Tex.pane);
+            statsBox.margin(8f);
+            statsBox.add(statsPane).grow();
+
+            table.add(imageBox).top().pad(5f);
+            table.add(statsBox).top().pad(5f).width(320f).height(Math.min(260f, Core.scene.getHeight() * 0.5f));
+        }
+
+        /** Ảnh block: name-icon -> preview mặc định của game (fullIcon) -> error.png của game. */
+        protected TextureRegion getBlockImage() {
+            TextureRegion region = Core.atlas.find(block.name + "-icon");
+            if (region.found()) return region;
+
+            region = block.fullIcon;
+            if (region != null && region.found()) return region;
+
+            return Core.atlas.find("error");
         }
 
         /** Tab Upgrade: tài nguyên trong core + lưới nâng cấp. */
@@ -249,7 +273,7 @@ public class NevixTurret extends ItemTurret {
             pane.setScrollingDisabled(true, false);
             pane.setFadeScrollBars(false);
 
-            table.add(pane).growX().maxHeight(Core.graphics.getHeight() * 0.6f).row();
+            table.add(pane).growX().maxHeight(Core.scene.getHeight() * 0.6f).row();
         }
 
         protected Table buildCoreResources() {
