@@ -63,7 +63,7 @@ public class TestTurret extends NevixTurret {
         }
 
         @Override
-        protected boolean canUpgrade(Upgrade up) {
+        protected boolean canUpgrade(Upgrade up, int tier) {
             // Nhánh 1 chỉ mua được khi chưa đạt tier tối đa
             return up != upgrades.first() || tier < maxTier;
         }
