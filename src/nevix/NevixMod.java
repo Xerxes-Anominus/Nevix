@@ -12,6 +12,7 @@ import mindustry.type.ItemStack;
 import mindustry.world.Block;
 import nevix.turret.TestTurret;
 import nevix.ui.DayNightPanel;
+import nevix.ui.UpdateLog;
 import nevix.world.DayNightCycle;
 
 import static mindustry.Vars.ui;
@@ -21,6 +22,7 @@ public class NevixMod extends Mod {
         Events.on(ClientLoadEvent.class, e -> {
             addSettings();
             DayNightPanel.init();
+            UpdateLog.init();
         });
     }
 
