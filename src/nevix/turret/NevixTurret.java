@@ -336,12 +336,16 @@ public class NevixTurret extends ItemTurret {
             }
         }
 
-        protected void addStat(Table table, String name, String value) {
+        protected void addStat(Table table, String name, String value, Color color) {
             Table line = new Table();
             line.left();
-            line.add(name + ": ").color(Color.lightGray).left();
-            line.add(value).color(Color.white).left().padLeft(5f);
+            line.add(Core.bundle.has("block." + block.name + ".custom-stat." + name + ".name") ? Core.bundle.get("block." + block.name + ".custom-stat." + name + ".name") : name + ": ").color(color).left();
+            line.add(Core.bundle.has("block." + block.name + ".custom-stat." + name + ".value") ? Core.bundle.get("block." + block.name + ".custom-stat." + name + ".value") : value).color(color).left().padLeft(5f);
             table.add(line).growX().left().row();
+        }
+        
+        protected void addStat(Table table, String name, String value) {
+            addStat(table, name, value, Color.white);
         }
         
         protected void addBulletStatTable(Table table, BulletType bullet) {
