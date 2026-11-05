@@ -1,38 +1,41 @@
 package nevix.turret;
 
 import arc.scene.ui.layout.Table;
-import arc.struct.ObjectMap;
 import mindustry.Vars;
 import mindustry.content.Items;
 import mindustry.entities.bullet.BasicBulletType;
-import mindustry.entities.bullet.BulletType;
 import mindustry.type.Category;
-import mindustry.type.Item;
 import mindustry.type.ItemStack;
 
 /** Turret test cho NevixTurret: có bảng stat, 6 nhánh nâng cấp (5 nhánh rỗng + 1 nhánh +tier để thử đồng bộ). */
 public class TestTurret extends NevixTurret {
+    public BasicBulletType copperBullet, graphiteBullet;
 
     public TestTurret(String name) {
         super(name);
-        
+
+        requirements(Category.turret, ItemStack.with(Items.copper, 50));
         size = 2;
         health = 400;
         range = 160f;
         reload = 30f;
-        maxTier = 99;
-        
+        maxTier = 3;
+
+        copperBullet = new BasicBulletType(3f, 9f) {{
+            lifetime = 60f;
+            width = 7f;
+            height = 9f;
+        }};
+
+        graphiteBullet = new BasicBulletType(3.5f, 18f) {{
+            lifetime = 60f;
+            width = 9f;
+            height = 12f;
+        }};
+
         ammo(
-            Items.copper, new BasicBulletType(3f, 9f) {{
-                lifetime = 60f;
-                width = 7f;
-                height = 9f;
-            }},
-            Items.graphite, new BasicBulletType(3.5f, 18f) {{
-                lifetime = 60f;
-                width = 9f;
-                height = 12f;
-            }}
+            Items.copper, copperBullet,
+            Items.graphite, graphiteBullet
         );
 
         // Nhánh 1: +1 tier, để nhìn thấy đồng bộ giữa các máy
@@ -55,10 +58,8 @@ public class TestTurret extends NevixTurret {
             addStat(table, "Tier", tier + "/" + maxTier);
             addStat(table, "Tầm bắn", (range / Vars.tilesize) + " ô");
 
-            // Hiện stat từng loại đạn của turret, y như bảng stat vanilla
-            for (ObjectMap.Entry<Item, BulletType> e : ammoTypes.entries()) {
-                addBulletStatTable(table, e.key, e.value);
-            }
+            // Chỉ hiện đúng những viên đạn được truyền vào, không phải toàn bộ ammoTypes
+            addBulletStatTable(table, copperBullet);
         }
 
         @Override

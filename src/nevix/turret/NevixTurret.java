@@ -20,12 +20,13 @@ import mindustry.graphics.Pal;
 import mindustry.type.Item;
 import mindustry.type.ItemStack;
 import mindustry.ui.Styles;
+import mindustry.ui.dialogs.BaseDialog;
 import mindustry.world.blocks.defense.turrets.ItemTurret;
 import mindustry.world.meta.StatValues;
 
 public class NevixTurret extends ItemTurret {
     /** Tier tối đa, đặt lại trong constructor của class con nếu cần. */
-    public int maxTier = 367;
+    public int maxTier = 99;
 
     /** Danh sách nâng cấp dùng chung cho mọi build của block này. Index trong Seq = id gửi qua mạng. */
     public Seq<Upgrade> upgrades = new Seq<>();
@@ -65,7 +66,7 @@ public class NevixTurret extends ItemTurret {
     public class NevixTurretBuild extends ItemTurretBuild {
         protected int tier = 0;
         protected int currentTab = 0;
-        protected Table configTable;
+        protected BaseDialog dialog;
 
         /** true chỉ trong lúc server tự gửi gói xác nhận. */
         private boolean confirming = false;
@@ -168,11 +169,34 @@ public class NevixTurret extends ItemTurret {
         // ==========================================
         // UI
         // ==========================================
+
+        /** Bấm vào block chỉ hiện đúng một nút. Bấm nút đó mới mở bảng. */
         @Override
         public void buildConfiguration(Table table) {
-            this.configTable = table;
-            table.clear();
-            table.top();
+            table.button(Icon.settings, Styles.cleari, () -> {
+                openDialog();
+                if (!Vars.headless) Vars.control.input.config.hideConfig();
+            }).size(40f);
+        }
+
+        protected void openDialog() {
+            if (Vars.headless) return;
+
+            if (dialog == null) {
+                dialog = new BaseDialog(block.localizedName);
+                dialog.addCloseButton();
+            }
+            rebuildDialog();
+            dialog.show();
+        }
+
+        /** Dựng lại nội dung bảng (tab, nội dung tab). */
+        protected void rebuildDialog() {
+            if (dialog == null) return;
+
+            Table cont = dialog.cont;
+            cont.clear();
+            cont.top();
 
             Table tabs = new Table();
             tabs.background(Styles.black6);
@@ -187,8 +211,48 @@ public class NevixTurret extends ItemTurret {
                 rebuild();
             }).size(120f, 40f).checked(currentTab == 1);
 
-            table.add(tabs).left().padBottom(5f).row();
+            cont.add(tabs).left().padBottom(5f).row();
 
+            Table content = new Table();
+            content.top().left();
+
+            if (currentTab == 0) {
+                buildMainTab(content);
+            } else {
+                buildUpgradeTab(content);
+            }
+            cont.add(content).grow().pad(5f);
+        }
+
+        /** Tab Main: icon + stat. Không hiện tài nguyên trong core. */
+        protected void buildMainTab(Table table) {
+            TextureRegion icon = Core.atlas.find(block.name + "-icon");
+            if (!icon.found()) icon = Core.atlas.find("clear");
+
+            table.image(icon).size(120f).pad(10f).row();
+
+            Table stats = new Table();
+            stats.top().left();
+            getStats(stats);
+            table.add(stats).growX().row();
+        }
+
+        /** Tab Upgrade: tài nguyên trong core + lưới nâng cấp. */
+        protected void buildUpgradeTab(Table table) {
+            table.add(buildCoreResources()).growX().padBottom(10f).row();
+
+            Table grid = new Table();
+            grid.top().left();
+            getUpgrades(grid);
+
+            ScrollPane pane = new ScrollPane(grid);
+            pane.setScrollingDisabled(true, false);
+            pane.setFadeScrollBars(false);
+
+            table.add(pane).growX().maxHeight(Core.graphics.getHeight() * 0.6f).row();
+        }
+
+        protected Table buildCoreResources() {
             Table coreResTable = new Table();
             coreResTable.background(Styles.black6);
             coreResTable.margin(5f);
@@ -216,41 +280,7 @@ public class NevixTurret extends ItemTurret {
                 }
             });
 
-            table.add(coreResTable).growX().padBottom(10f).row();
-
-            Table content = new Table();
-            content.top().left();
-
-            if (currentTab == 0) {
-                buildMainTab(content);
-            } else {
-                buildUpgradeTab(content);
-            }
-            table.add(content).grow().pad(5f);
-        }
-
-        protected void buildMainTab(Table table) {
-            TextureRegion icon = Core.atlas.find(name + "-icon");
-            if (!icon.found()) icon = Core.atlas.find("clear");
-
-            table.image(icon).size(120f).pad(10f).row();
-
-            Table stats = new Table();
-            stats.top().left();
-            getStats(stats);
-            table.add(stats).growX().row();
-        }
-
-        protected void buildUpgradeTab(Table table) {
-            Table grid = new Table();
-            grid.top().left();
-            getUpgrades(grid);
-
-            ScrollPane pane = new ScrollPane(grid);
-            pane.setScrollingDisabled(true, false);
-            pane.setFadeScrollBars(false);
-
-            table.add(pane).grow().row();
+            return coreResTable;
         }
 
         protected void getStats(Table table) {
@@ -268,15 +298,14 @@ public class NevixTurret extends ItemTurret {
             table.add(value).color(Color.white).left().padLeft(5f).row();
         }
 
-        /** Hiển thị stat đạn y như bảng stat vanilla (dùng chính StatValues.ammo của game). */
+        /**
+         * Hiển thị stat của đúng viên đạn được truyền vào, y như bảng stat vanilla
+         * (dùng chính StatValues.ammo của game). Không hiện icon item.
+         */
         protected void addBulletStatTable(Table table, BulletType bullet) {
-            addBulletStatTable(table, NevixTurret.this, bullet);
-        }
-
-        /** Như trên, nhưng truyền thêm key (ví dụ một Item) để hiện icon + tên phía trên stat. */
-        protected void addBulletStatTable(Table table, UnlockableContent key, BulletType bullet) {
+            // Key là chính turret: StatValues bỏ qua tiêu đề (icon + tên) khi key là Turret.
             ObjectMap<UnlockableContent, BulletType> map = new ObjectMap<>();
-            map.put(key, bullet);
+            map.put(block, bullet);
             StatValues.ammo(map).display(table);
         }
 
@@ -340,9 +369,16 @@ public class NevixTurret extends ItemTurret {
             }
         }
 
+        /** Dựng lại bảng nếu đang mở (đăng ký sang frame sau để không xóa UI giữa lúc xử lý click). */
         protected void rebuild() {
-            if (Vars.headless || configTable == null || configTable.parent == null) return;
-            Core.app.post(() -> buildConfiguration(configTable));
+            if (Vars.headless || dialog == null || !dialog.isShown()) return;
+            Core.app.post(this::rebuildDialog);
+        }
+
+        @Override
+        public void onRemoved() {
+            super.onRemoved();
+            if (dialog != null && dialog.isShown()) dialog.hide();
         }
     }
 }
