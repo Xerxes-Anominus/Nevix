@@ -46,7 +46,7 @@ public class NevixMod extends Mod {
     
     @Override
     public void loadContent() {
-        test = new TestTurret("sex") {{
+        test = new TestTurret("test") {{
             requirements(Category.turret, ItemStack.with(Items.copper, 50));
         }};
     }
