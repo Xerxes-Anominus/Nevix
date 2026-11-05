@@ -1,12 +1,12 @@
 name: nevix
 displayName: Nevix
 
-description: ""
+description: "Inspired by: Newex"
 subtile: ""
 
 author: "[#9B59D0[]]X[#B56BE8[]]e[#D86FEA[]]a[#FF69B4[]]n[[]]"
 
-version: "0.1.0"
+version: "Beta: 0.1.0"
 minGameVersion: 160
 
 hidden: false
