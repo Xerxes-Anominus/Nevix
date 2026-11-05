@@ -30,7 +30,7 @@ public class NevixMod extends Mod {
     }
 
     void addSettings() {
-        ui.settings.addCategory(Core.bundle.get("nevix-setting.name"), Icon.settings, table -> {
+        ui.settings.addCategory(Core.bundle.get("nevix-settings.name"), Icon.settings, table -> {
             table.checkPref("map-darkening", true);
             table.sliderPref("cycle-time", 10, 5, 60, 1, value -> value + " min");
             table.checkPref("show-daynight-panel", false);
