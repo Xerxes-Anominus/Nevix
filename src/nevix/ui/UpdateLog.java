@@ -18,7 +18,7 @@ public final class UpdateLog {
 
     public static void init() {
         Vars.ui.menufrag.addButton(
-                Core.bundle.get(PREFIX + ".name"),
+                Core.bundle.get(PREFIX + "name"),
                 Icon.book,
                 UpdateLog::show
         );
@@ -31,7 +31,7 @@ public final class UpdateLog {
     }
 
     public static void show() {
-        BaseDialog dialog = new BaseDialog(Core.bundle.get(PREFIX + ".name"));
+        BaseDialog dialog = new BaseDialog(Core.bundle.get(PREFIX + "name"));
 
         float width = Math.min(Core.graphics.getWidth() / Scl.scl(1.05f), 550f);
         float height = Math.min(Core.graphics.getHeight() / Scl.scl(1.6f), 400f);
