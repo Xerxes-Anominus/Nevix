@@ -26,16 +26,15 @@ import mindustry.world.blocks.defense.turrets.ItemTurret;
 import mindustry.world.meta.StatValues;
 
 public class NevixTurret extends ItemTurret {
-    /** Tier tối đa, đặt lại trong constructor của class con nếu cần. */
     public int maxTier = 99;
-
-    /** Danh sách nâng cấp dùng chung cho mọi build của block này. Index trong Seq = id gửi qua mạng. */
+    
+    public int upgradeColumns = 3;
+    
     public Seq<Upgrade> upgrades = new Seq<>();
 
     public static class Upgrade {
         public final String name, desc;
         public final ItemStack[] cost;
-        /** Chạy trên MỌI máy (server + client) khi server xác nhận mua. */
         public final Cons<NevixTurretBuild> effect;
 
         public Upgrade(String name, String desc, ItemStack[] cost, Cons<NevixTurretBuild> effect) {
@@ -49,15 +48,12 @@ public class NevixTurret extends ItemTurret {
     public NevixTurret(String name) {
         super(name);
         configurable = true;
-
-        // Client -> Server: "tôi muốn mua nâng cấp số id". Chỉ server xử lý.
+        
         config(Integer.class, (NevixTurretBuild b, Integer id) -> b.requestUpgrade(id));
-
-        // Server -> tất cả: xác nhận. x = id nâng cấp (-1 = chỉ đồng bộ tier), y = tier.
+        
         config(Point2.class, (NevixTurretBuild b, Point2 p) -> b.applyConfirm(p.x, p.y));
     }
-
-    /** Gọi trong constructor của class con để đăng ký nâng cấp. */
+    
     public Upgrade addUpgrade(String name, String desc, ItemStack[] cost, Cons<NevixTurretBuild> effect) {
         Upgrade u = new Upgrade(name, desc, cost, effect);
         upgrades.add(u);
@@ -68,18 +64,13 @@ public class NevixTurret extends ItemTurret {
         protected int tier = 0;
         protected int currentTab = 0;
         protected BaseDialog dialog;
-
-        /** true chỉ trong lúc server tự gửi gói xác nhận. */
+        
         private boolean confirming = false;
-
-        // ==========================================
-        // TIER
-        // ==========================================
+        
         public int getTier() {
             return tier;
         }
-
-        /** Đặt tier trên máy hiện tại (không gửi mạng). Dùng trong effect hoặc khi load. */
+        
         public void setTier(int value) {
             value = Mathf.clamp(value, 0, maxTier);
             if (value == tier) return;
@@ -87,21 +78,18 @@ public class NevixTurret extends ItemTurret {
             tier = value;
             onTierChanged(old, value);
         }
-
-        /** Server gọi để ép mọi client có cùng tier (ví dụ khi đổi tier bằng code/script). */
+        
         public void syncTier(int value) {
             if (Vars.net.client()) return;
             sendConfirm(-1, value);
         }
-
-        /** Override ở class con: tính lại chỉ số theo tier. Chạy trên mọi máy. */
+        
         protected void onTierChanged(int oldTier, int newTier) {
             rebuild();
         }
 
         @Override
         public byte version() {
-            // +1 để save cũ (chưa có tier) vẫn đọc được
             return (byte)(super.version() + 1);
         }
 
@@ -117,32 +105,23 @@ public class NevixTurret extends ItemTurret {
             super.read(read, (byte)Math.min(revision, base));
             if (revision > base) {
                 tier = Mathf.clamp(read.i(), 0, maxTier);
-                // Nếu có chỉ số phụ thuộc tier, tính lại ở đây.
             }
         }
-
-        // ==========================================
-        // ĐỒNG BỘ MẠNG
-        // ==========================================
-        /** Chạy trên server/singleplayer. Client bỏ qua gói này. */
+        
         protected void requestUpgrade(int id) {
             if (Vars.net.client()) return;
             if (id < 0 || id >= upgrades.size) return;
 
             Upgrade up = upgrades.get(id);
-            // Server tự kiểm tra, không tin client
             if (!canUpgrade(up) || !canAfford(up.cost)) return;
 
             payCost(up.cost);
             sendConfirm(id, 0);
-
-            // Gửi lại tier chuẩn của server để tự sửa nếu client lệch
+            
             if (Vars.net.active()) sendConfirm(-1, tier);
         }
-
-        /** Chạy trên mọi máy khi nhận gói xác nhận từ server. */
+        
         protected void applyConfirm(int id, int newTier) {
-            // Server chỉ nhận gói do chính nó gửi (chặn client giả mạo)
             if (Vars.net.server() && !confirming) return;
 
             if (id >= 0 && id < upgrades.size) {
@@ -161,17 +140,11 @@ public class NevixTurret extends ItemTurret {
                 confirming = false;
             }
         }
-
-        /** Override ở class con để thêm điều kiện (ví dụ yêu cầu tier). */
+        
         protected boolean canUpgrade(Upgrade up) {
             return true;
         }
-
-        // ==========================================
-        // UI
-        // ==========================================
-
-        /** Bấm vào block chỉ hiện đúng một nút. Bấm nút đó mới mở bảng. */
+        
         @Override
         public void buildConfiguration(Table table) {
             table.button(Icon.settings, Styles.cleari, () -> {
@@ -190,14 +163,13 @@ public class NevixTurret extends ItemTurret {
             rebuildDialog();
             dialog.show();
         }
-
-        /** Dựng lại nội dung bảng (tab, nội dung tab). */
+        
         protected void rebuildDialog() {
             if (dialog == null) return;
 
             Table cont = dialog.cont;
             cont.clear();
-            cont.top();
+            cont.center();
 
             Table tabs = new Table();
             tabs.background(Styles.black6);
@@ -205,34 +177,35 @@ public class NevixTurret extends ItemTurret {
             tabs.button(Core.bundle.get("upgrade.main.name"), Styles.togglet, () -> {
                 currentTab = 0;
                 rebuild();
-            }).size(120f, 40f).checked(currentTab == 0);
+            }).size(180f, 52f).checked(currentTab == 0);
 
             tabs.button(Core.bundle.get("upgrade.upgrade.name"), Styles.togglet, () -> {
                 currentTab = 1;
                 rebuild();
-            }).size(120f, 40f).checked(currentTab == 1);
+            }).size(180f, 52f).checked(currentTab == 1);
 
-            cont.add(tabs).left().padBottom(5f).row();
+            cont.add(tabs).center().padBottom(12f).row();
 
             Table content = new Table();
-            content.top().left();
+            content.center();
 
             if (currentTab == 0) {
                 buildMainTab(content);
             } else {
                 buildUpgradeTab(content);
             }
-            cont.add(content).grow().pad(5f);
+            cont.add(content).center().pad(5f);
         }
-
-        /** Tab Main: ô Ảnh bên trái, ô Thông số bên phải. Không hiện tài nguyên trong core. */
+        
         protected void buildMainTab(Table table) {
-            // Ô ảnh
+            float imgSize = Math.min(220f, Core.scene.getHeight() * 0.32f);
+            float statsW = Math.max(260f, Math.min(480f, Core.scene.getWidth() * 0.9f - imgSize - 90f));
+            float statsH = Math.min(360f, Core.scene.getHeight() * 0.55f);
+            
             Table imageBox = new Table();
             imageBox.background(Tex.pane);
-            imageBox.image(getBlockImage()).size(128f).pad(16f);
-
-            // Ô thông số (cuộn được nếu dài)
+            imageBox.image(getBlockImage()).size(imgSize).pad(20f);
+            
             Table stats = new Table();
             stats.top().left();
             getStats(stats);
@@ -243,14 +216,13 @@ public class NevixTurret extends ItemTurret {
 
             Table statsBox = new Table();
             statsBox.background(Tex.pane);
-            statsBox.margin(8f);
+            statsBox.margin(12f);
             statsBox.add(statsPane).grow();
 
-            table.add(imageBox).top().pad(5f);
-            table.add(statsBox).top().pad(5f).width(320f).height(Math.min(260f, Core.scene.getHeight() * 0.5f));
+            table.add(imageBox).top().pad(8f);
+            table.add(statsBox).top().pad(8f).size(statsW, statsH);
         }
-
-        /** Ảnh block: name-icon -> preview mặc định của game (fullIcon) -> error.png của game. */
+        
         protected TextureRegion getBlockImage() {
             TextureRegion region = Core.atlas.find(block.name + "-icon");
             if (region.found()) return region;
@@ -260,20 +232,25 @@ public class NevixTurret extends ItemTurret {
 
             return Core.atlas.find("error");
         }
-
-        /** Tab Upgrade: tài nguyên trong core + lưới nâng cấp. */
+        
         protected void buildUpgradeTab(Table table) {
+            float paneW = upgradeColumns * (upgradeCardWidth() + 10f) + 24f;
+
             table.add(buildCoreResources()).growX().padBottom(10f).row();
 
             Table grid = new Table();
-            grid.top().left();
+            grid.top();
             getUpgrades(grid);
 
             ScrollPane pane = new ScrollPane(grid);
             pane.setScrollingDisabled(true, false);
             pane.setFadeScrollBars(false);
 
-            table.add(pane).growX().maxHeight(Core.scene.getHeight() * 0.6f).row();
+            table.add(pane).width(paneW).maxHeight(Core.scene.getHeight() * 0.6f).row();
+        }
+        
+        protected float upgradeCardWidth() {
+            return Mathf.clamp(Core.scene.getWidth() * 0.85f / upgradeColumns - 12f, 200f, 320f);
         }
 
         protected Table buildCoreResources() {
@@ -309,72 +286,65 @@ public class NevixTurret extends ItemTurret {
 
         protected void getStats(Table table) {
         }
-
-        /** Mặc định vẽ tất cả nâng cấp đã đăng ký. Class con có thể override nếu muốn UI riêng. */
+        
         protected void getUpgrades(Table table) {
             for (int i = 0; i < upgrades.size; i++) {
                 buildUpgradeCard(table, i);
+                if ((i + 1) % upgradeColumns == 0) table.row();
             }
         }
 
         protected void addStat(Table table, String name, String value) {
-            table.add(name + ": ").color(Color.lightGray).left();
-            table.add(value).color(Color.white).left().padLeft(5f).row();
+            Table line = new Table();
+            line.left();
+            line.add(name + ": ").color(Color.lightGray).left();
+            line.add(value).color(Color.white).left().padLeft(5f);
+            table.add(line).growX().left().row();
         }
-
-        /**
-         * Hiển thị stat của đúng viên đạn được truyền vào, y như bảng stat vanilla
-         * (dùng chính StatValues.ammo của game). Không hiện icon item.
-         */
+        
         protected void addBulletStatTable(Table table, BulletType bullet) {
-            // Key là chính turret: StatValues bỏ qua tiêu đề (icon + tên) khi key là Turret.
             ObjectMap<UnlockableContent, BulletType> map = new ObjectMap<>();
             map.put(block, bullet);
-            StatValues.ammo(map).display(table);
+
+            Table wrap = new Table();
+            wrap.left();
+            StatValues.ammo(map).display(wrap);
+            table.add(wrap).growX().left().row();
         }
 
         protected void buildUpgradeCard(Table table, int id) {
             Upgrade up = upgrades.get(id);
+            float cardW = upgradeCardWidth();
 
             Table uTable = new Table();
             uTable.background(Styles.black6);
-            uTable.margin(10f);
-            uTable.setWidth(260f);
+            uTable.margin(12f);
 
             uTable.add(up.name).color(Pal.accent).left().colspan(2).row();
 
-            uTable.add(up.desc).color(Color.lightGray).left().colspan(2).wrap().width(240f).row();
+            uTable.add(up.desc).color(Color.lightGray).left().colspan(2).wrap().width(cardW - 24f).padTop(4f).row();
 
             Table costTable = new Table();
             costTable.left();
             for (ItemStack stack : up.cost) {
-                costTable.image(stack.item.uiIcon).size(24f).padRight(5f);
+                costTable.image(stack.item.uiIcon).size(28f).padRight(5f);
                 costTable.add(String.valueOf(stack.amount)).color(Color.white).padRight(15f);
             }
-            uTable.add(costTable).left().padTop(5f);
-
-            // Nút mua: chỉ GỬI YÊU CẦU lên server, không trừ tài nguyên / chạy effect ở client
+            uTable.add(costTable).left().growX().padTop(8f);
+            
             uTable.button(Icon.up, Styles.clearNonei, () -> {
                 if (canBuy(id)) configure(id);
-            }).size(40f)
+            }).size(48f).padTop(8f)
               .disabled(b -> !canBuy(id));
-
-            table.add(uTable).pad(5f);
-
-            // Tự động xuống dòng sau mỗi 2 nhánh (2 cột)
-            if (table.getCells().size % 2 == 0) {
-                table.row();
-            }
+            
+            table.add(uTable).width(cardW).minHeight(150f).top().pad(5f);
         }
 
         protected boolean canBuy(int id) {
             Upgrade up = upgrades.get(id);
             return canUpgrade(up) && canAfford(up.cost);
         }
-
-        // ==========================================
-        // LOGIC HỖ TRỢ
-        // ==========================================
+        
         protected boolean canAfford(ItemStack[] cost) {
             if (Vars.state.rules.infiniteResources) return true;
             if (team == null || team.core() == null) return false;
@@ -383,8 +353,7 @@ public class NevixTurret extends ItemTurret {
             }
             return true;
         }
-
-        /** Chỉ được gọi trên server/singleplayer. Client thấy số item mới qua snapshot của game. */
+        
         protected void payCost(ItemStack[] cost) {
             if (Vars.state.rules.infiniteResources) return;
             if (team == null || team.core() == null) return;
@@ -392,8 +361,7 @@ public class NevixTurret extends ItemTurret {
                 team.core().items.remove(stack.item, stack.amount);
             }
         }
-
-        /** Dựng lại bảng nếu đang mở (đăng ký sang frame sau để không xóa UI giữa lúc xử lý click). */
+        
         protected void rebuild() {
             if (Vars.headless || dialog == null || !dialog.isShown()) return;
             Core.app.post(this::rebuildDialog);
