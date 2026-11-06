@@ -5,6 +5,7 @@ import arc.Events;
 import arc.util.CommandHandler;
 import mindustry.Vars;
 import mindustry.content.Items;
+import mindustry.entities.bullet.BasicBulletType;
 import mindustry.game.EventType.ClientLoadEvent;
 import mindustry.gen.Icon;
 import mindustry.mod.Mod;
@@ -51,7 +52,9 @@ public class NevixMod extends Mod {
     public void loadContent() {
         test = new NevixTurret("test") {{
             size = 2;
+            requirements(Category.turret, ItemStack.with(Items.copper, 1));
             addUpgrade("test-branch1", "desc", ItemStack.with(Items.copper, 100, Items.lead, 30), build -> {});
+            ammoTypes.put(Items.copper, new BasicBulletType());
         }};
     }
 }
