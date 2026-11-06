@@ -3,6 +3,7 @@ package nevix;
 import arc.Core;
 import arc.Events;
 import arc.util.CommandHandler;
+import mindustry.Vars;
 import mindustry.content.Items;
 import mindustry.game.EventType.ClientLoadEvent;
 import mindustry.gen.Icon;
@@ -10,7 +11,7 @@ import mindustry.mod.Mod;
 import mindustry.type.Category;
 import mindustry.type.ItemStack;
 import mindustry.world.Block;
-import nevix.turret.TestTurret;
+import nevix.turret.NevixTurret;
 import nevix.ui.DayNightPanel;
 import nevix.ui.UpdateLog;
 import nevix.world.DayNightCycle;
@@ -48,8 +49,9 @@ public class NevixMod extends Mod {
     
     @Override
     public void loadContent() {
-        test = new TestTurret("test") {{
-            requirements(Category.turret, ItemStack.with(Items.copper, 50));
+        test = new NevixTurret("test") {{
+            size = 2;
+            addUpgrade("test-branch1", "desc", ItemStack.with(Items.copper, 100, Items.lead, 30), build -> {});
         }};
     }
 }
