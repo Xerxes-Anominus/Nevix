@@ -27,11 +27,11 @@ import mindustry.ui.dialogs.BaseDialog;
 import mindustry.world.blocks.defense.turrets.ItemTurret;
 import mindustry.world.meta.StatValues;
 
+import java.util.Arrays;
+
 public class NevixTurret extends ItemTurret {
-    public int maxTier = 99;
-    
     public int upgradeColumns = 3;
-    
+
     public Seq<Upgrade> upgrades = new Seq<>();
 
     public static class Upgrade {
@@ -53,15 +53,15 @@ public class NevixTurret extends ItemTurret {
         
         config(Integer.class, (NevixTurretBuild b, Integer id) -> b.requestUpgrade(id));
         
-        config(Point2.class, (NevixTurretBuild b, Point2 p) -> b.applyConfirm(p.x, p.y));
+        config(Point2.class, (NevixTurretBuild b, Point2 p) -> b.applyConfirm(p.x));
     }
-    
+
     public Upgrade addUpgrade(String name, String desc, ItemStack[] cost, Cons<NevixTurretBuild> effect) {
         Upgrade u = new Upgrade(name, desc, cost, effect);
         upgrades.add(u);
         return u;
     }
-    
+
     public NevixTurretBuild openPreview(int tab) {
         if (Vars.headless) return null;
 
@@ -77,93 +77,89 @@ public class NevixTurret extends ItemTurret {
     }
 
     public class NevixTurretBuild extends ItemTurretBuild {
-        protected int tier = 0;
         protected int currentTab = 0;
         protected BaseDialog dialog;
-        
+
         protected boolean preview = false;
         
+        protected boolean[] done = new boolean[0];
+
         private boolean confirming = false;
-        
-        public int getTier() {
-            return tier;
+
+        protected void ensureDone() {
+            if (done.length != upgrades.size) done = Arrays.copyOf(done, upgrades.size);
+        }
+
+        public boolean isDone(int id) {
+            if (id < 0 || id >= upgrades.size) return false;
+            ensureDone();
+            return done[id];
         }
         
-        public void setTier(int value) {
-            value = Mathf.clamp(value, 0, maxTier);
-            if (value == tier) return;
-            int old = tier;
-            tier = value;
-            onTierChanged(old, value);
-        }
-        
-        public void syncTier(int value) {
-            if (Vars.net.client()) return;
-            sendConfirm(-1, value);
-        }
-        
-        protected void onTierChanged(int oldTier, int newTier) {
+        protected void markDone(int id) {
+            if (id < 0 || id >= upgrades.size) return;
+            ensureDone();
+            if (done[id]) return;
+            done[id] = true;
+            upgrades.get(id).effect.get(this);
             rebuild();
         }
 
         @Override
         public byte version() {
-            return (byte)(super.version() + 1);
+            return (byte)(super.version() + 2);
         }
 
         @Override
         public void write(Writes write) {
             super.write(write);
-            write.i(tier);
+            ensureDone();
+            write.i(done.length);
+            for (boolean d : done) write.bool(d);
         }
 
         @Override
         public void read(Reads read, byte revision) {
             byte base = super.version();
             super.read(read, (byte)Math.min(revision, base));
-            if (revision > base) {
-                tier = Mathf.clamp(read.i(), 0, maxTier);
+
+            if (revision == base + 1) {
+                read.i();
+            } else if (revision > base + 1) {
+                int n = read.i();
+                boolean[] loaded = new boolean[Math.max(n, upgrades.size)];
+                for (int i = 0; i < n; i++) loaded[i] = read.bool();
+                done = Arrays.copyOf(loaded, upgrades.size);
             }
         }
-        
+
         protected void requestUpgrade(int id) {
             if (Vars.net.client()) return;
             if (id < 0 || id >= upgrades.size) return;
+            if (!canBuy(id)) return;
 
-            Upgrade up = upgrades.get(id);
-            
-            if (!canUpgrade(up, tier) || !canAfford(up.cost)) return;
-
-            payCost(up.cost);
-            sendConfirm(id, 0);
-            
-            if (Vars.net.active()) sendConfirm(-1, tier);
+            payCost(upgrades.get(id).cost);
+            sendConfirm(id);
         }
-        
-        protected void applyConfirm(int id, int newTier) {
+
+        protected void applyConfirm(int id) {
             if (Vars.net.server() && !confirming) return;
-
-            if (id >= 0 && id < upgrades.size) {
-                upgrades.get(id).effect.get(this);
-                rebuild();
-            } else if (id == -1) {
-                setTier(newTier);
-            }
+            markDone(id);
         }
 
-        protected void sendConfirm(int id, int value) {
+        protected void sendConfirm(int id) {
             confirming = true;
             try {
-                configureAny(new Point2(id, value));
+                configureAny(new Point2(id, 0));
             } finally {
                 confirming = false;
             }
         }
-        
-        protected boolean canUpgrade(Upgrade up, int tier) {
+
+        protected boolean canUpgrade(Upgrade up) {
             return true;
         }
-        
+
         @Override
         public void buildConfiguration(Table table) {
             table.button(Icon.settings, Styles.cleari, () -> {
@@ -171,11 +167,11 @@ public class NevixTurret extends ItemTurret {
                 if (!Vars.headless) Vars.control.input.config.hideConfig();
             }).size(40f);
         }
-        
+
         public void openMain() {
             openDialog(0);
         }
-        
+
         public void openUpgrade() {
             openDialog(1);
         }
@@ -194,14 +190,14 @@ public class NevixTurret extends ItemTurret {
                 dialog.buttons.remove();
                 dialog.margin(0f);
                 dialog.cont.margin(0f);
-                
+
                 if (dialog.getCell(dialog.cont) != null) dialog.getCell(dialog.cont).pad(0f);
                 dialog.closeOnBack();
             }
             rebuildDialog();
             dialog.show();
         }
-        
+
         protected void rebuildDialog() {
             if (dialog == null) return;
 
@@ -221,13 +217,13 @@ public class NevixTurret extends ItemTurret {
                 currentTab = 1;
                 rebuild();
             }).size(180f, 52f).checked(currentTab == 1);
-            
+
             Table topBar = new Table();
             topBar.add().size(52f);
             topBar.add(tabs).expandX().center();
             topBar.button(Icon.cancel, Styles.cleari, () -> dialog.hide()).size(52f);
             cont.add(topBar).growX().pad(8f).row();
-            
+
             Table content = new Table();
             if (currentTab == 0) {
                 buildMainTab(content);
@@ -236,13 +232,13 @@ public class NevixTurret extends ItemTurret {
             }
             cont.add(content).grow();
         }
-        
+
         protected void buildMainTab(Table table) {
             float half = Core.scene.getWidth() / 2f;
-            
+
             Table iconSection = new Table();
             iconSection.image(getBlockImage()).scaling(Scaling.fit).grow();
-            
+
             Table stats = new Table();
             stats.top().left();
             getStats(stats);
@@ -259,7 +255,7 @@ public class NevixTurret extends ItemTurret {
             table.add(iconSection).width(half).growY();
             table.add(statsBox).grow().pad(16f);
         }
-        
+
         protected TextureRegion getBlockImage() {
             TextureRegion region = Core.atlas.find(block.name + "-icon");
             if (region.found()) return region;
@@ -269,7 +265,7 @@ public class NevixTurret extends ItemTurret {
 
             return Core.atlas.find("error");
         }
-        
+
         protected void buildUpgradeTab(Table table) {
             float paneW = upgradeColumns * (upgradeCardWidth() + 10f) + 24f;
 
@@ -290,7 +286,7 @@ public class NevixTurret extends ItemTurret {
 
             table.add(pane).width(paneW).growY().padBottom(8f).row();
         }
-        
+
         protected float upgradeCardWidth() {
             return Mathf.clamp(Core.scene.getWidth() * 0.85f / upgradeColumns - 12f, 200f, 320f);
         }
@@ -330,9 +326,15 @@ public class NevixTurret extends ItemTurret {
         }
         
         protected void getUpgrades(Table table) {
+            int shown = 0;
             for (int i = 0; i < upgrades.size; i++) {
+                if (isDone(i)) continue;
                 buildUpgradeCard(table, i);
-                if ((i + 1) % upgradeColumns == 0) table.row();
+                if (++shown % upgradeColumns == 0) table.row();
+            }
+
+            if (shown == 0) {
+                table.add(Core.bundle.get("upgrade.all-done", "All upgrades completed")).color(Color.lightGray).pad(24f);
             }
         }
 
@@ -343,11 +345,11 @@ public class NevixTurret extends ItemTurret {
             line.add(Core.bundle.has("block." + block.name + ".custom-stat." + name + ".value") ? Core.bundle.get("block." + block.name + ".custom-stat." + name + ".value") : value).color(color).left().padLeft(5f);
             table.add(line).growX().left().row();
         }
-        
+
         protected void addStat(Table table, String name, String value) {
             addStat(table, name, value, Color.white);
         }
-        
+
         protected void addBulletStatTable(Table table, BulletType bullet) {
             ObjectMap<UnlockableContent, BulletType> map = new ObjectMap<>();
             map.put(block, bullet);
@@ -377,27 +379,27 @@ public class NevixTurret extends ItemTurret {
                 costTable.add(String.valueOf(stack.amount)).color(Color.white).padRight(15f);
             }
             uTable.add(costTable).left().growX().padTop(8f);
-            
+
             uTable.button(Icon.up, Styles.clearNonei, () -> {
                 if (!canBuy(id)) return;
                 if (preview) previewUpgrade(id);
                 else configure(id);
             }).size(48f).padTop(8f)
               .disabled(b -> !canBuy(id));
-            
+
             table.add(uTable).width(cardW).minHeight(150f).top().pad(5f);
         }
-        
+
         protected void previewUpgrade(int id) {
-            upgrades.get(id).effect.get(this);
-            rebuild();
+            markDone(id);
         }
 
         protected boolean canBuy(int id) {
+            if (id < 0 || id >= upgrades.size) return false;
             Upgrade up = upgrades.get(id);
-            return canUpgrade(up, tier) && canAfford(up.cost);
+            return !isDone(id) && canUpgrade(up) && canAfford(up.cost);
         }
-        
+
         protected boolean isFree() {
             return preview || Vars.state.isMenu() || Vars.state.rules.editor || Vars.state.rules.infiniteResources;
         }
@@ -410,7 +412,7 @@ public class NevixTurret extends ItemTurret {
             }
             return true;
         }
-        
+
         protected void payCost(ItemStack[] cost) {
             if (isFree()) return;
             if (team == null || team.core() == null) return;
@@ -418,7 +420,7 @@ public class NevixTurret extends ItemTurret {
                 team.core().items.remove(stack.item, stack.amount);
             }
         }
-        
+
         protected void rebuild() {
             if (Vars.headless || dialog == null || !dialog.isShown()) return;
             Core.app.post(this::rebuildDialog);
