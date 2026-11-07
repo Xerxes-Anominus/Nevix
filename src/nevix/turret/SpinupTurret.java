@@ -7,9 +7,11 @@ import arc.graphics.g2d.Draw;
 import arc.graphics.g2d.Fill;
 import arc.graphics.g2d.Lines;
 import arc.math.Angles;
+import arc.math.Interp;
 import arc.math.Mathf;
 import arc.scene.ui.layout.Table;
 import arc.util.Time;
+import arc.util.Tmp;
 import arc.util.io.Reads;
 import arc.util.io.Writes;
 import mindustry.Vars;
@@ -159,17 +161,15 @@ public class SpinupTurret extends NevixTurret {
         public int max;
         public float nonShootTimer;
         
-        public float spinAngle, spinSpeed, ringAlpha;
-        
+        public float ringAlpha, colorPhase;
+        public float fadeInTime = 60f;
+        public float fadeOutTime = 30f;
+        public float colorSpeed = 4f;
+
         private Color[] ringColors = {
             Color.valueOf("ffffff"), Color.valueOf("bfbfbf"), Color.valueOf("7f7f7f"),
             Color.valueOf("3f3f3f"), Color.valueOf("000000")
         };
-        private Color[] atomColors = {
-            Color.valueOf("ffffff"), Color.valueOf("cccccc"), Color.valueOf("999999"),
-            Color.valueOf("666666"), Color.valueOf("333333")
-        };
-        private Color blendColor = Color.valueOf("cccccc");
         
         @Override
         protected void getStats(Table table) {
@@ -246,10 +246,8 @@ public class SpinupTurret extends NevixTurret {
             super.updateTile();
             
             boolean active = isShooting() && hasAmmo();
-            ringAlpha = Mathf.lerpDelta(ringAlpha, active ? 1f : 0f, 0.1f);
-            float target = 1f + shootCount * 1.5f;
-            spinSpeed = Mathf.lerpDelta(spinSpeed, active ? target : 0f, 0.05f);
-            spinAngle = (spinAngle + spinSpeed * Time.delta) % 360f;
+            ringAlpha = Mathf.approachDelta(ringAlpha, active ? 1f : 0f, 1f / (active ? fadeInTime : fadeOutTime));
+            colorPhase = (colorPhase + colorSpeed * Time.delta) % 360f;
             
             if (isShooting()) {
                 nonShootTimer = 0f;
@@ -358,6 +356,9 @@ public class SpinupTurret extends NevixTurret {
             super.draw();
             if(ringAlpha < 0.01f) return;
 
+            float alpha = Interp.smooth.apply(ringAlpha);
+            float phase = 0.5f + 0.5f * Mathf.sinDeg(colorPhase);
+
             float
             dx = x + 4f * Mathf.cosDeg(rotation - 180f),
             dy = y + 4f * Mathf.sinDeg(rotation - 180f),
@@ -366,8 +367,9 @@ public class SpinupTurret extends NevixTurret {
             for(int k = 0; k < 5; k++) {
                 float r = 6.25f + 0.75f * k;
                 float step = 0.1f * (4 - k);
-
-                Draw.color(ringColors[k], ringAlpha);
+                
+                Tmp.c1.set(ringColors[k]).lerp(ringColors[4 - k], phase);
+                Draw.color(Tmp.c1, alpha);
 
                 Draw.z(z0 + step);
                 drawSpikes(dx, dy, r * 1.5f);
@@ -377,8 +379,9 @@ public class SpinupTurret extends NevixTurret {
             }
 
             float rb = 6.25f + 0.75f * 5f;
+            Tmp.c1.set(ringColors[4]).lerp(ringColors[0], phase);
             Draw.blend(Blending.additive);
-            Draw.color(blendColor, 0.4f * ringAlpha);
+            Draw.color(Tmp.c1, 0.4f * alpha);
 
             Draw.z(z0 + 1f);
             drawSpikes(dx, dy, rb * 1.5f);
@@ -386,18 +389,6 @@ public class SpinupTurret extends NevixTurret {
             Fill.circle(dx, dy, rb * 0.8f);
 
             Draw.blend();
-            
-            float orbitRadius = rb + 2f;
-            for(int i = 0; i < 5; i++) {
-                float ang = spinAngle + i * 72f;
-                float ox = dx + Mathf.cosDeg(ang) * orbitRadius;
-                float oy = dy + Mathf.sinDeg(ang) * orbitRadius;
-
-                Draw.color(atomColors[i], ringAlpha);
-                Draw.z(z0 + 1.2f);
-                Fill.circle(ox, oy, 1.6f);
-            }
-            
             Draw.z(Layer.turret);
             Draw.reset();
         }
