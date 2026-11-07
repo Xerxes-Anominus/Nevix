@@ -540,9 +540,11 @@ public class NevixTurret extends ItemTurret {
                 spaces += "    ";
             }
             
-            bt.add(spaces + stat.localized() + ": ").color(color);
-            bt.add(value).color(color);
-            bt.row();
+            Table line = new Table();
+            line.left();
+            line.add(spaces + stat.localized() + ": ").color(color);
+            line.add(value).color(color);
+            bt.add(line).growX().left().row();
         }
         
         protected void addBulletStat(Table bt, Stat stat, String value, int deep) {

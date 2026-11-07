@@ -177,11 +177,11 @@ public class SpinupTurret extends NevixTurret {
                     if(peekAmmo().fragBullets > 0 && peekAmmo().fragBullet != null) {
                         addBulletStat(bt, Stat.damage, "" + peekAmmo().fragBullet.damage, 1);
                         if(peekAmmo().fragBullet instanceof SpinupBulletType sbt && explosiveBullet) {
-                            addBulletStat(bt, NevixStat.splashDamage, "" + (sbt.damage * 3f));
-                            addBulletStat(bt, NevixStat.splashDamageRadius, "3.0 " + NevixStatUnit.get(NevixStatUnit.tile));
+                            addBulletStat(bt, NevixStat.splashDamage, "" + (sbt.damage * 3f), 1);
+                            addBulletStat(bt, NevixStat.splashDamageRadius, "3.0 " + NevixStatUnit.get(NevixStatUnit.tile), 1);
                         }
                         if(peekAmmo().fragBullet instanceof SpinupBulletType sbt && percentBullet) {
-                            addBulletStat(bt, NevixStat.bonusDamage, "0.5% " + NevixStatUnit.get(NevixStatUnit.maxHealth));
+                            addBulletStat(bt, NevixStat.bonusDamage, "0.5% " + NevixStatUnit.get(NevixStatUnit.maxHealth), 1);
                         }
                     }
                 }
