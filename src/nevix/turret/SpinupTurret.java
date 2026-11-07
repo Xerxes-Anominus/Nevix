@@ -66,6 +66,7 @@ public class SpinupTurret extends NevixTurret {
         inaccuracy = 5;
         
         shootSound = Sounds.shootDisperse;
+        targetGround = false;
         
         ammoTypes.put(Items.lead, new SpinupBulletType() {{
             damage = 24;
@@ -339,13 +340,13 @@ public class SpinupTurret extends NevixTurret {
                     Draw.color(cor[i]);
                     Draw.blend();
                     Draw.z(cirLay);
-                    Fill.circle(dx, dy, 6f);
+                    Fill.circle(dx, dy, 4f + 0.25f * i);
                     Draw.z(triLay);
-                    Drawf.tri(tx1, ty1, 3f, 12f, this.rotation + 270f);
+                    Drawf.tri(tx1, ty1, 2f + 0.25f * i, 10f + 0.25f * i, this.rotation + 270f);
                     Drawf.tri(tx2, ty2, 3f, 12f, this.rotation + 90f);
                 }
                 
-                Draw.color(cor[0].a(0.4f));
+                Draw.color(cor[0].a(0.2f));
                 Draw.z(Layer.effect + 11f);
                 Fill.circle(dx, dy, 6.25f);
                 Draw.z(Layer.effect - 9);
