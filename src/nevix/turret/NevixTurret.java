@@ -516,18 +516,18 @@ public class NevixTurret extends ItemTurret {
             line.add(stat.localized() + (stat == NevixStat.none ? "" : ": ")).color(color).left();
             line.add(Core.bundle.has("block." + block.name + ".custom-stat." + stat.name + ".value")
             ? Core.bundle.get("block." + block.name + ".custom-stat." + stat.name + ".value")
-            : value).color(color).left().padLeft(5f);
+            : value).color(Color.white).left().padLeft(5f);
             table.add(line).growX().left().row();
         }
         
         protected void addStat(Table table, Stat stat, String value) {
-            addStat(table, stat, value, Color.white);
+            addStat(table, stat, value, Color.gray);
         }
         
         protected Table addBulletStatTable(Table table, Cons<Table> content) {
             Table bt = new Table();
             bt.left().defaults().padRight(3f).left();
-            bt.background(Tex.underline);
+            bt.background(Tex.pane);
             content.get(bt);
             
             table.add(bt).growX().left().row();
@@ -542,13 +542,13 @@ public class NevixTurret extends ItemTurret {
             
             Table line = new Table();
             line.left();
-            line.add(spaces + stat.localized() + ": ").color(color);
-            line.add(value).color(color);
+            line.add(spaces + stat.localized() + (stat == NevixStat.none ? "" : ": ")).color(color);
+            line.add(value).color(Color.white);
             bt.add(line).growX().left().row();
         }
         
         protected void addBulletStat(Table bt, Stat stat, String value, int deep) {
-            addBulletStat(bt, stat, value, deep, Color.white);
+            addBulletStat(bt, stat, value, deep, Color.gray);
         }
         
         protected void addBulletStat(Table table, Stat stat, String value) {

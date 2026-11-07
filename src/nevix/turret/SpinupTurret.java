@@ -164,8 +164,8 @@ public class SpinupTurret extends NevixTurret {
             addStat(table, NevixStat.none, "");
             
             addStat(table, NevixStat.ammo, "", Pal.accent);
-            addBulletStatTable(table, bt -> {
-                if(peekAmmo() != null) {
+            if(peekAmmo() != null) {
+                addBulletStatTable(table, bt -> {
                     addBulletStat(bt, Stat.damage, "" + peekAmmo().damage);
                     if(peekAmmo() instanceof SpinupBulletType sbt && explosiveBullet) {
                         addBulletStat(bt, NevixStat.splashDamage, "" + (sbt.damage * 3f));
@@ -184,8 +184,8 @@ public class SpinupTurret extends NevixTurret {
                             addBulletStat(bt, NevixStat.bonusDamage, "0.5% " + NevixStatUnit.get(NevixStatUnit.maxHealth), 1);
                         }
                     }
-                }
-            });
+                });
+            }
             
             addStat(table, NevixStat.none, "");
             
