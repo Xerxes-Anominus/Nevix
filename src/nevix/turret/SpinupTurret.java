@@ -2,6 +2,9 @@ package nevix.turret;
 
 import arc.Core;
 import arc.graphics.Color;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.Fill;
+import arc.graphics.g2d.Lines;
 import arc.math.Angles;
 import arc.math.Mathf;
 import arc.scene.ui.layout.Table;
@@ -18,6 +21,8 @@ import mindustry.gen.Bullet;
 import mindustry.gen.Healthc;
 import mindustry.gen.Hitboxc;
 import mindustry.gen.Sounds;
+import mindustry.graphics.Drawf;
+import mindustry.graphics.Layer;
 import mindustry.graphics.Pal;
 import mindustry.type.ItemStack;
 import mindustry.ui.Bar;
@@ -53,7 +58,7 @@ public class SpinupTurret extends NevixTurret {
         health = 850;
         size = 2;
         
-        reload = 45f;
+        reload = 30f;
         range = 30f * Vars.tilesize;
         
         shoot.shots = 5;
@@ -153,11 +158,13 @@ public class SpinupTurret extends NevixTurret {
         public int max;
         public float nonShootTimer;
         
+        private Color[] cor = {Color.valueOf("000000"), Color.valueOf("3f3f3f"), Color.valueOf("7f7f7f"), Color.valueOf("bfbfbf"), Color.valueOf("ffffff"), Color.valueOf("ffffff").a(0.4f)};
+        
         @Override
         protected void getStats(Table table) {
             addStat(table, NevixStat.generals, "", Pal.accent);
             addStat(table, Stat.health, "" + maxHealth());
-            addStat(table, Stat.range, "" + range());
+            addStat(table, Stat.range, "" + (range() / Vars.tilesize));
             addStat(table, NevixStat.fireRate, "+" + (hasteBoost() * 100f) + "%");
             addStat(table, NevixStat.fireRatePerShoot, "+10%");
             
@@ -227,7 +234,7 @@ public class SpinupTurret extends NevixTurret {
             clampHaste();
             super.updateTile();
             
-            if (isShooting) {
+            if (isShooting()) {
                 nonShootTimer = 0f;
             } else if (shootCount > 0) {
                 nonShootTimer += Time.delta;
@@ -310,6 +317,50 @@ public class SpinupTurret extends NevixTurret {
             shootCount = r.i();
             max = r.i();
             nonShootTimer = r.f();
+        }
+        
+        @Override
+        public void draw() {
+            super.draw();
+            
+            float
+            rot = (Time.time + ((this.y * Vars.world.width()) - this.x)) * 60f,
+            dx = this.x + 4f * Mathf.cosDeg(this.rotation - 180f),
+            dy = this.y + 4f * Mathf.sinDeg(this.rotation - 180f);
+            
+            for(int i = 0; i < 6; i++) {
+                float lay = Layer.effect - i;
+                
+                Draw.z(lay);
+                
+                Draw.color(cor[i]);
+                Lines.stroke(2f);
+                Lines.circle(dx, dy, 8f + 0.5f * i);
+                
+                float[] angles = {135f, 45f, 315f, 225f};
+                float[] direct = {-1f, 1f, -1f, 1f};
+                
+                Draw.z(lay - 0.1f);
+                for(int j = 0; j < 4; j++) {
+                    float angle = angles[j] + this.rotation * direct[j];
+                    float cos = Mathf.cosDeg(angle);
+                    float sin = Mathf.sinDeg(angle);
+                    
+                    float half = (10f - 0.5f * i) / 2f;
+                    
+                    float
+                    ax = dx - half * cos,
+                    ay = dy + half * sin,
+                    bx = dx + half * cos,
+                    by = dy - half * sin,
+                    px = dx + half * 4f * cos,
+                    py = dy + half * 4f * sin;
+                    
+                    Fill.tri(ax, ay, bx, by, px, py);
+                }
+            }
+            
+            Draw.reset();
         }
     }
 }
