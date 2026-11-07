@@ -165,7 +165,11 @@ public class SpinupTurret extends NevixTurret {
             Color.valueOf("ffffff"), Color.valueOf("bfbfbf"), Color.valueOf("7f7f7f"),
             Color.valueOf("3f3f3f"), Color.valueOf("000000")
         };
-        private Color blendColor = Color.valueOf("66ccff");
+        private Color[] atomColors = {
+            Color.valueOf("ffffff"), Color.valueOf("cccccc"), Color.valueOf("999999"),
+            Color.valueOf("666666"), Color.valueOf("333333")
+        };
+        private Color blendColor = Color.valueOf("cccccc");
         
         @Override
         protected void getStats(Table table) {
@@ -336,11 +340,11 @@ public class SpinupTurret extends NevixTurret {
             float half = r * 0.25f;
             float h = r * 2f;
             
-            for(int j = 0; j < 4; j++) {
-                float ang = (j % 2 == 0 ? spinAngle : -spinAngle) + j * 90f;
+            for(int j = 0; j < 2; j++) {
+                float ang = rotation + 90f + j * 180f;
                 float c = Mathf.cosDeg(ang);
                 float s = Mathf.sinDeg(ang);
-                
+
                 Fill.tri(
                 cx - half * s, cy + half * c,
                 cx + half * s, cy - half * c,
@@ -358,7 +362,7 @@ public class SpinupTurret extends NevixTurret {
             dx = x + 4f * Mathf.cosDeg(rotation - 180f),
             dy = y + 4f * Mathf.sinDeg(rotation - 180f),
             z0 = Layer.effect;
-            
+
             for(int k = 0; k < 5; k++) {
                 float r = 6.25f + 0.75f * k;
                 float step = 0.1f * (4 - k);
@@ -366,22 +370,34 @@ public class SpinupTurret extends NevixTurret {
                 Draw.color(ringColors[k], ringAlpha);
 
                 Draw.z(z0 + step);
-                drawSpikes(dx, dy, r);
+                drawSpikes(dx, dy, r * 1.5f);
 
                 Draw.z(z0 + 0.5f + step);
-                Fill.circle(dx, dy, r);
+                Fill.circle(dx, dy, r * 0.8f);
             }
-            
+
             float rb = 6.25f + 0.75f * 5f;
             Draw.blend(Blending.additive);
             Draw.color(blendColor, 0.4f * ringAlpha);
 
             Draw.z(z0 + 1f);
-            drawSpikes(dx, dy, rb);
+            drawSpikes(dx, dy, rb * 1.5f);
             Draw.z(z0 + 1.1f);
-            Fill.circle(dx, dy, rb);
+            Fill.circle(dx, dy, rb * 0.8f);
 
             Draw.blend();
+            
+            float orbitRadius = rb + 2f;
+            for(int i = 0; i < 5; i++) {
+                float ang = spinAngle + i * 72f;
+                float ox = dx + Mathf.cosDeg(ang) * orbitRadius;
+                float oy = dy + Mathf.sinDeg(ang) * orbitRadius;
+
+                Draw.color(atomColors[i], ringAlpha);
+                Draw.z(z0 + 1.2f);
+                Fill.circle(ox, oy, 1.6f);
+            }
+            
             Draw.z(Layer.turret);
             Draw.reset();
         }
