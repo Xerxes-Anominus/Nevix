@@ -3,6 +3,8 @@ package nevix.turret;
 import arc.Core;
 import arc.func.Cons;
 import arc.graphics.Color;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.Lines;
 import arc.graphics.g2d.TextureRegion;
 import arc.math.Mathf;
 import arc.math.geom.Point2;
@@ -446,7 +448,7 @@ public class NevixTurret extends ItemTurret {
         }
 
         protected float upgradeCardWidth() {
-            return Mathf.clamp(Core.scene.getWidth() * 0.85f / upgradeColumns - 12f, 200f, 320f);
+            return Mathf.clamp(Core.scene.getWidth() * 0.85f / upgradeColumns - 12f, 230f, 320f);
         }
 
         protected Table buildCoreResources() {
@@ -555,12 +557,43 @@ public class NevixTurret extends ItemTurret {
             addBulletStat(table, stat, value, 0);
         }
 
+        protected Table borderedCard(Upgrade up) {
+            final Color border = isDone(up) ? Pal.heal : Pal.accent;
+            return new Table(Styles.black6) {
+                @Override
+                public void draw() {
+                    super.draw();
+                    Draw.color(border);
+                    Lines.stroke(2f);
+                    Lines.rect(x + 1f, y + 1f, width - 2f, height - 2f);
+                    Draw.reset();
+                }
+            };
+        }
+
+        protected void addCostTable(Table parent, ItemStack[] stacks, float width) {
+            final int perRow = 3;
+            Table costTable = new Table();
+            costTable.left().defaults().left().padRight(10f).padBottom(2f);
+
+            int i = 0;
+            for (ItemStack stack : stacks) {
+                boolean enough = isFree() || (team != null && team.core() != null
+                    && team.core().items.get(stack.item) >= stack.amount);
+
+                costTable.image(stack.item.uiIcon).size(22f).padRight(3f);
+                costTable.add(String.valueOf(stack.amount)).color(enough ? Color.white : Color.scarlet);
+
+                if (++i % perRow == 0) costTable.row();
+            }
+            parent.add(costTable).left().colspan(2).width(width).padTop(8f).row();
+        }
+
         protected void buildUpgradeCard(Table table, int id) {
             Upgrade up = upgrades.get(id);
             float cardW = upgradeCardWidth();
 
-            Table uTable = new Table();
-            uTable.background(Styles.black6);
+            Table uTable = borderedCard(up);
             uTable.margin(12f);
 
             uTable.add(up.name).color(Pal.accent).left().colspan(2).row();
@@ -583,19 +616,13 @@ public class NevixTurret extends ItemTurret {
                 uTable.add(req).left().colspan(2).padTop(6f).row();
             }
 
-            Table costTable = new Table();
-            costTable.left();
-            for (ItemStack stack : up.cost) {
-                costTable.image(stack.item.uiIcon).size(28f).padRight(5f);
-                costTable.add(String.valueOf(stack.amount)).color(Color.white).padRight(15f);
-            }
-            uTable.add(costTable).left().growX().padTop(8f);
+            addCostTable(uTable, up.cost, cardW - 24f);
 
             uTable.button(Icon.up, Styles.clearNonei, () -> {
                 if (!canBuy(id)) return;
                 if (preview) previewUpgrade(id);
                 else configure(id);
-            }).size(48f).padTop(8f)
+            }).size(48f).colspan(2).right().padTop(4f)
               .disabled(b -> !canBuy(id));
 
             table.add(uTable).width(cardW).minHeight(150f).top().pad(5f);
@@ -605,8 +632,7 @@ public class NevixTurret extends ItemTurret {
             Upgrade up = upgrades.get(id);
             float cardW = upgradeCardWidth();
 
-            Table uTable = new Table();
-            uTable.background(Styles.black6);
+            Table uTable = borderedCard(up);
             uTable.margin(12f);
 
             uTable.add(up.name).color(Pal.accent).left().colspan(2).row();
@@ -624,19 +650,13 @@ public class NevixTurret extends ItemTurret {
                 uTable.add(need).left().colspan(2).padTop(6f).row();
             }
 
-            Table costTable = new Table();
-            costTable.left();
-            for (ItemStack stack : deleteCost(up)) {
-                costTable.image(stack.item.uiIcon).size(28f).padRight(5f);
-                costTable.add(String.valueOf(stack.amount)).color(Color.white).padRight(15f);
-            }
-            uTable.add(costTable).left().growX().padTop(8f);
+            addCostTable(uTable, deleteCost(up), cardW - 24f);
 
             uTable.button(Icon.trash, Styles.clearNonei, () -> {
                 if (!canDelete(id)) return;
                 if (preview) previewDelete(id);
                 else configure(~id);
-            }).size(48f).padTop(8f)
+            }).size(48f).colspan(2).right().padTop(4f)
               .disabled(b -> !canDelete(id));
 
             table.add(uTable).width(cardW).minHeight(150f).top().pad(5f);
