@@ -1,6 +1,7 @@
 package nevix.turret;
 
 import arc.Core;
+import arc.graphics.Blending;
 import arc.graphics.Color;
 import arc.graphics.g2d.Draw;
 import arc.graphics.g2d.Fill;
@@ -158,7 +159,13 @@ public class SpinupTurret extends NevixTurret {
         public int max;
         public float nonShootTimer;
         
-        private Color[] cor = {Color.valueOf("000000"), Color.valueOf("3f3f3f"), Color.valueOf("7f7f7f"), Color.valueOf("bfbfbf"), Color.valueOf("ffffff"), Color.valueOf("ffffff").a(0.4f)};
+        public float spinAngle, spinSpeed, ringAlpha;
+        
+        private Color[] ringColors = {
+            Color.valueOf("ffffff"), Color.valueOf("bfbfbf"), Color.valueOf("7f7f7f"),
+            Color.valueOf("3f3f3f"), Color.valueOf("000000")
+        };
+        private Color blendColor = Color.valueOf("66ccff");
         
         @Override
         protected void getStats(Table table) {
@@ -233,6 +240,12 @@ public class SpinupTurret extends NevixTurret {
         public void updateTile() {
             clampHaste();
             super.updateTile();
+            
+            boolean active = isShooting() && hasAmmo();
+            ringAlpha = Mathf.lerpDelta(ringAlpha, active ? 1f : 0f, 0.1f);
+            float target = 1f + shootCount * 1.5f;
+            spinSpeed = Mathf.lerpDelta(spinSpeed, active ? target : 0f, 0.05f);
+            spinAngle = (spinAngle + spinSpeed * Time.delta) % 360f;
             
             if (isShooting()) {
                 nonShootTimer = 0f;
@@ -319,47 +332,57 @@ public class SpinupTurret extends NevixTurret {
             nonShootTimer = r.f();
         }
         
+        protected void drawSpikes(float cx, float cy, float r) {
+            float half = r * 0.25f;
+            float h = r * 2f;
+            
+            for(int j = 0; j < 4; j++) {
+                float ang = (j % 2 == 0 ? spinAngle : -spinAngle) + j * 90f;
+                float c = Mathf.cosDeg(ang);
+                float s = Mathf.sinDeg(ang);
+                
+                Fill.tri(
+                cx - half * s, cy + half * c,
+                cx + half * s, cy - half * c,
+                cx + h * c, cy + h * s
+                );
+            }
+        }
+
         @Override
         public void draw() {
             super.draw();
-            
+            if(ringAlpha < 0.01f) return;
+
             float
-            rot = (Time.time + ((this.y * Vars.world.width()) - this.x)) * 60f,
-            dx = this.x + 4f * Mathf.cosDeg(this.rotation - 180f),
-            dy = this.y + 4f * Mathf.sinDeg(this.rotation - 180f);
+            dx = x + 4f * Mathf.cosDeg(rotation - 180f),
+            dy = y + 4f * Mathf.sinDeg(rotation - 180f),
+            z0 = Layer.effect;
             
-            for(int i = 0; i < 6; i++) {
-                float lay = Layer.effect - i;
-                
-                Draw.z(lay);
-                
-                Draw.color(cor[i]);
-                Lines.stroke(2f);
-                Lines.circle(dx, dy, 8f + 0.5f * i);
-                
-                float[] angles = {135f, 45f, 315f, 225f};
-                float[] direct = {-1f, 1f, -1f, 1f};
-                
-                Draw.z(lay - 0.1f);
-                for(int j = 0; j < 4; j++) {
-                    float angle = angles[j] + this.rotation * direct[j];
-                    float cos = Mathf.cosDeg(angle);
-                    float sin = Mathf.sinDeg(angle);
-                    
-                    float half = (10f - 0.5f * i) / 2f;
-                    
-                    float
-                    ax = dx - half * cos,
-                    ay = dy + half * sin,
-                    bx = dx + half * cos,
-                    by = dy - half * sin,
-                    px = dx + half * 4f * cos,
-                    py = dy + half * 4f * sin;
-                    
-                    Fill.tri(ax, ay, bx, by, px, py);
-                }
+            for(int k = 0; k < 5; k++) {
+                float r = 6.25f + 0.75f * k;
+                float step = 0.1f * (4 - k);
+
+                Draw.color(ringColors[k], ringAlpha);
+
+                Draw.z(z0 + step);
+                drawSpikes(dx, dy, r);
+
+                Draw.z(z0 + 0.5f + step);
+                Fill.circle(dx, dy, r);
             }
             
+            float rb = 6.25f + 0.75f * 5f;
+            Draw.blend(Blending.additive);
+            Draw.color(blendColor, 0.4f * ringAlpha);
+
+            Draw.z(z0 + 1f);
+            drawSpikes(dx, dy, rb);
+            Draw.z(z0 + 1.1f);
+            Fill.circle(dx, dy, rb);
+
+            Draw.blend();
+            Draw.z(Layer.turret);
             Draw.reset();
         }
     }
