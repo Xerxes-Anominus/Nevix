@@ -62,7 +62,11 @@ public final class DayNightCycle {
             }
         });
         
-        Events.on(PlayerLeave.class, e -> synced = false);
+        Events.on(PlayerLeave.class, e -> {
+            if (net.client() && e.player != null && e.player.isLocal()) {
+                synced = false;
+            }
+        });
 
         Events.on(WorldLoadEvent.class, e -> {
             origLighting = state.rules.lighting;
