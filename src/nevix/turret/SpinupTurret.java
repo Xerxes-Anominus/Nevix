@@ -201,18 +201,15 @@ public class SpinupTurret extends NevixTurret {
             switch (hasteTier) {
                 case 1 -> {
                     return 5;
-                    break;
                 }
                 case 2 -> {
                     return 10;
-                    break;
                 }
                 case 3 -> {
                     return 20;
-                    break;
                 }
                 default -> {
-                    return 0
+                    return 0;
                 }
             }
         }
