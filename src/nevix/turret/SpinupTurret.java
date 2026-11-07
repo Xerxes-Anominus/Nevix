@@ -7,11 +7,9 @@ import arc.graphics.g2d.Draw;
 import arc.graphics.g2d.Fill;
 import arc.graphics.g2d.Lines;
 import arc.math.Angles;
-import arc.math.Interp;
 import arc.math.Mathf;
 import arc.scene.ui.layout.Table;
 import arc.util.Time;
-import arc.util.Tmp;
 import arc.util.io.Reads;
 import arc.util.io.Writes;
 import mindustry.Vars;
@@ -161,16 +159,6 @@ public class SpinupTurret extends NevixTurret {
         public int max;
         public float nonShootTimer;
         
-        public float ringAlpha, colorPhase;
-        public float fadeInTime = 60f;
-        public float fadeOutTime = 30f;
-        public float colorSpeed = 4f;
-
-        private Color[] ringColors = {
-            Color.valueOf("ffffff"), Color.valueOf("bfbfbf"), Color.valueOf("7f7f7f"),
-            Color.valueOf("3f3f3f"), Color.valueOf("000000")
-        };
-        
         @Override
         protected void getStats(Table table) {
             addStat(table, NevixStat.generals, "", Pal.accent);
@@ -244,10 +232,6 @@ public class SpinupTurret extends NevixTurret {
         public void updateTile() {
             clampHaste();
             super.updateTile();
-            
-            boolean active = isShooting() && hasAmmo();
-            ringAlpha = Mathf.approachDelta(ringAlpha, active ? 1f : 0f, 1f / (active ? fadeInTime : fadeOutTime));
-            colorPhase = (colorPhase + colorSpeed * Time.delta) % 360f;
             
             if (isShooting()) {
                 nonShootTimer = 0f;
@@ -333,63 +317,41 @@ public class SpinupTurret extends NevixTurret {
             max = r.i();
             nonShootTimer = r.f();
         }
-        
-        protected void drawSpikes(float cx, float cy, float r) {
-            float half = r * 0.25f;
-            float h = r * 2f;
-            
-            for(int j = 0; j < 2; j++) {
-                float ang = rotation + 90f + j * 180f;
-                float c = Mathf.cosDeg(ang);
-                float s = Mathf.sinDeg(ang);
-
-                Fill.tri(
-                cx - half * s, cy + half * c,
-                cx + half * s, cy - half * c,
-                cx + h * c, cy + h * s
-                );
-            }
-        }
 
         @Override
         public void draw() {
             super.draw();
-            if(ringAlpha < 0.01f) return;
-
-            float alpha = Interp.smooth.apply(ringAlpha);
-            float phase = 0.5f + 0.5f * Mathf.sinDeg(colorPhase);
-
-            float
-            dx = x + 4f * Mathf.cosDeg(rotation - 180f),
-            dy = y + 4f * Mathf.sinDeg(rotation - 180f),
-            z0 = Layer.effect;
-
-            for(int k = 0; k < 5; k++) {
-                float r = 6.25f + 0.75f * k;
-                float step = 0.1f * (4 - k);
+            
+            if(isShooting()) {
+                float
+                dx = this.x + 4f * Mathf.cosDeg(this.rotation - 180f),
+                dy = this.y + 4f * Mathf.sinDeg(this.rotation - 180f),
+                tx1 = dx + 6f * Mathf.cosDeg(this.rotation + 270f),
+                ty1 = dy + 6f * Mathf.sinDeg(this.rotation + 270f),
+                tx2 = dx + 6f * Mathf.cosDeg(this.rotation + 90f),
+                ty2 = dy + 6f * Mathf.sinDeg(this.rotation + 90f);
                 
-                Tmp.c1.set(ringColors[k]).lerp(ringColors[4 - k], phase);
-                Draw.color(Tmp.c1, alpha);
-
-                Draw.z(z0 + step);
-                drawSpikes(dx, dy, r * 1.5f);
-
-                Draw.z(z0 + 0.5f + step);
-                Fill.circle(dx, dy, r * 0.8f);
+                Color[] cor = {Color.valueOf("ffffff"), Color.valueOf("bfbfbf"), Color.valueOf("7f7f7f"), Color.valueOf("3f3f3f"), Color.valueOf("000000")};
+                
+                for(int i = 0; i < 5; i++) {
+                    float cirLay = Layer.effect + 10f - i, triLay = Layer.effect - 10f - i;
+                    
+                    Draw.color(cor[i]);
+                    Draw.blend();
+                    Draw.z(cirLay);
+                    Fill.circle(dx, dy, 6f);
+                    Draw.z(triLay);
+                    Drawf.tri(tx1, ty1, 3f, 12f, this.rotation + 270f);
+                    Drawf.tri(tx2, ty2, 3f, 12f, this.rotation + 90f);
+                }
+                
+                Draw.color(cor[0].a(0.4f));
+                Draw.z(Layer.effect + 11f);
+                Fill.circle(dx, dy, 6.25f);
+                Draw.z(Layer.effect - 9);
+                Drawf.tri(tx1, ty1, 3.125f, 12.5f, this.rotation + 270f);
+                Drawf.tri(tx2, ty2, 3.125f, 12.5f, this.rotation + 90f);
             }
-
-            float rb = 6.25f + 0.75f * 5f;
-            Tmp.c1.set(ringColors[4]).lerp(ringColors[0], phase);
-            Draw.blend(Blending.additive);
-            Draw.color(Tmp.c1, 0.4f * alpha);
-
-            Draw.z(z0 + 1f);
-            drawSpikes(dx, dy, rb * 1.5f);
-            Draw.z(z0 + 1.1f);
-            Fill.circle(dx, dy, rb * 0.8f);
-
-            Draw.blend();
-            Draw.z(Layer.turret);
             Draw.reset();
         }
     }
