@@ -13,6 +13,7 @@ import mindustry.type.Category;
 import mindustry.type.ItemStack;
 import mindustry.world.Block;
 import nevix.turret.NevixTurret;
+import nevix.turret.SpinupTurret;
 import nevix.ui.DayNightPanel;
 import nevix.ui.UpdateLog;
 import nevix.world.DayNightCycle;
@@ -46,15 +47,12 @@ public class NevixMod extends Mod {
         });
     }
     
-    public static Block test;
+    public static Block spinup;
     
     @Override
     public void loadContent() {
-        test = new NevixTurret("test") {{
-            size = 2;
-            requirements(Category.turret, ItemStack.with(Items.copper, 1));
-            addUpgrade("test-branch1", "desc", ItemStack.with(Items.copper, 100, Items.lead, 30), build -> {});
-            ammoTypes.put(Items.copper, new BasicBulletType());
+        spinup = new SpinupTurret("spinup") {{
+            requirements(Category.turret, ItemStack.with(Items.copper, 60, Items.lead, 20));
         }};
     }
 }
