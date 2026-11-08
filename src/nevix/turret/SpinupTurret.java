@@ -17,6 +17,8 @@ import mindustry.content.Items;
 import mindustry.entities.Damage;
 import mindustry.entities.bullet.BasicBulletType;
 import mindustry.entities.bullet.BulletType;
+import mindustry.entities.pattern.ShootAlternate;
+import mindustry.entities.pattern.ShootBarrel;
 import mindustry.entities.pattern.ShootPattern;
 import mindustry.gen.Bullet;
 import mindustry.gen.Healthc;
@@ -62,8 +64,13 @@ public class SpinupTurret extends NevixTurret {
         reload = 30f;
         range = 30f * Vars.tilesize;
         
-        shoot.shots = 5;
-        inaccuracy = 5;
+        recoil = 2f;
+        
+        shoot = new ShootAlternate() {{
+            spread = 5f;
+            shots = 6;
+            barrels = 3;
+        }};
         
         shootSound = Sounds.shootDisperse;
         targetGround = false;
@@ -317,43 +324,6 @@ public class SpinupTurret extends NevixTurret {
             shootCount = r.i();
             max = r.i();
             nonShootTimer = r.f();
-        }
-
-        @Override
-        public void draw() {
-            super.draw();
-            
-            if(isShooting()) {
-                float
-                dx = this.x + 4f * Mathf.cosDeg(this.rotation - 180f),
-                dy = this.y + 4f * Mathf.sinDeg(this.rotation - 180f),
-                tx1 = dx + 6f * Mathf.cosDeg(this.rotation + 270f),
-                ty1 = dy + 6f * Mathf.sinDeg(this.rotation + 270f),
-                tx2 = dx + 6f * Mathf.cosDeg(this.rotation + 90f),
-                ty2 = dy + 6f * Mathf.sinDeg(this.rotation + 90f);
-                
-                Color[] cor = {Color.valueOf("ffffff"), Color.valueOf("bfbfbf"), Color.valueOf("7f7f7f"), Color.valueOf("3f3f3f"), Color.valueOf("000000")};
-                
-                for(int i = 0; i < 5; i++) {
-                    float cirLay = Layer.effect + 10f - i, triLay = Layer.effect - 10f - i;
-                    
-                    Draw.color(cor[i]);
-                    Draw.blend();
-                    Draw.z(cirLay);
-                    Fill.circle(dx, dy, 4f + 0.25f * i);
-                    Draw.z(triLay);
-                    Drawf.tri(tx1, ty1, 2f + 0.25f * i, 10f + 0.25f * i, this.rotation + 270f);
-                    Drawf.tri(tx2, ty2, 3f, 12f, this.rotation + 90f);
-                }
-                
-                Draw.color(cor[0].a(0.2f));
-                Draw.z(Layer.effect + 11f);
-                Fill.circle(dx, dy, 6.25f);
-                Draw.z(Layer.effect - 9);
-                Drawf.tri(tx1, ty1, 3.125f, 12.5f, this.rotation + 270f);
-                Drawf.tri(tx2, ty2, 3.125f, 12.5f, this.rotation + 90f);
-            }
-            Draw.reset();
         }
     }
 }
