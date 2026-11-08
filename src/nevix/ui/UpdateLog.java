@@ -17,11 +17,13 @@ public final class UpdateLog {
     private UpdateLog() {}
 
     public static void init() {
-        Vars.ui.menufrag.addButton(
+        Events.on(ClientLoadEvent.class, event -> {;
+            Vars.ui.menufrag.addButton(
                 Core.bundle.get(PREFIX + "name"),
                 Icon.book,
                 UpdateLog::show
-        );
+            );
+        });
     }
     
     private static int versionCount() {
