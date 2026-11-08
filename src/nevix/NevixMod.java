@@ -6,12 +6,14 @@ import arc.util.CommandHandler;
 import mindustry.Vars;
 import mindustry.content.Items;
 import mindustry.entities.bullet.BasicBulletType;
+import mindustry.entities.part.RegionPart;
 import mindustry.game.EventType.ClientLoadEvent;
 import mindustry.gen.Icon;
 import mindustry.mod.Mod;
 import mindustry.type.Category;
 import mindustry.type.ItemStack;
 import mindustry.world.Block;
+import mindustry.world.draw.DrawTurret;
 import nevix.turret.NevixTurret;
 import nevix.turret.SpinupTurret;
 import nevix.ui.DayNightPanel;
@@ -53,6 +55,15 @@ public class NevixMod extends Mod {
     public void loadContent() {
         spinup = new SpinupTurret("spinup") {{
             requirements(Category.turret, ItemStack.with(Items.copper, 60, Items.lead, 20));
+            
+            drawer = new DrawTurret("reinforced") {{
+                parts.add(new RegionPart("-wing") {{
+                    mirror = false;
+                    under = false;
+                    moveY = -1f;
+                    progress = PartProgress.recoil;
+                }});
+            }};
         }};
     }
 }
