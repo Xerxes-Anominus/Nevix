@@ -56,11 +56,13 @@ public class NevixMod extends Mod {
         spinup = new SpinupTurret("spinup") {{
             requirements(Category.turret, ItemStack.with(Items.copper, 60, Items.lead, 20));
             
+            inaccuracy = 5f;
+            
             drawer = new DrawTurret("reinforced-") {{
                 parts.add(new RegionPart("-wing") {{
                     mirror = false;
                     under = false;
-                    moveY = -1f;
+                    moveY = -2f;
                     progress = PartProgress.recoil;
                 }});
             }};
