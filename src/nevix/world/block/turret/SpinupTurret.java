@@ -416,14 +416,13 @@ public class SpinupTurret extends NevixTurret {
             
             if(isShooting && peekAmmo() != null && hasAmmo()) {
                 float
-                dx = this.x + 2f * Mathf.cosDeg(this.rotation - 180f),
-                dy = this.y + 2f * Mathf.sinDeg(this.rotation - 180f);
+                dx = this.x + 4f * Mathf.cosDeg(this.rotation - 180f),
+                dy = this.y + 4f * Mathf.sinDeg(this.rotation - 180f);
                 Color[] cor = {Color.valueOf("3f3f3f"), Color.valueOf("7f7f7f"), Color.valueOf("bfbfbf"), Color.valueOf("ffffff")};
                 
                 for(int i = 0; i < 4; i++) {
                     drawSpinupAura(dx, dy, 6f - 0.2f * i, 2.75f - 0.25f * i, cor[i], Layer.effect + i);
                 }
-                drawSpinupAura(dx, dy, 6.2f, 3f, Color.valueOf("ffffff").a(0.4f), Layer.effect + 5);
             }
             Draw.reset();
         }
