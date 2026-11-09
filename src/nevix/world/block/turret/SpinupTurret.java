@@ -409,5 +409,36 @@ public class SpinupTurret extends NevixTurret {
             max = r.i();
             nonShootTimer = r.f();
         }
+        
+        @Override
+        public void draw() {
+            super.draw();
+            
+            if(isShooting && peekAmmo() != null && hasAmmo()) {
+                float
+                dx = this.x + 2f * Mathf.cosDeg(this.rotation),
+                dy = this.y + 2f * Mathf.sinDeg(this.rotation);
+                Color[] cor = {Color.valueOf("3f3f3f"), Color.valueOf("7f7f7f"), Color.valueOf("bfbfbf"), Color.valueOf("ffffff")};
+                
+                for(int i = 0; i < 4; i++) {
+                    drawSpinupAura(dx, dy, 6f - 0.2f * i, cor[i], Layer.effect + i);
+                }
+                drawSpinupAura(dx, dy, 6.2f, Color.valueOf("ffffff").a(0.4f), Layer.effect + 10);
+            }
+            Draw.reset();
+        }
+        
+        public void drawSpinupAura(float dx, float dy, float radius, Color color, float layer) {
+            Draw.z(layer);
+            Draw.blend(Blending.additive);
+            Draw.color(color);
+            
+            float offset = this.y * Vars.world.width() - this.x;
+            Lines.circle(dx, dy, radius);
+            Drawf.tri(dx, dy, radius, radius, (90f + Time.time + offset) % 360f);
+            Drawf.tri(dx, dy, radius, radius, (180f + Time.time + offset) % 360f);
+            Drawf.tri(dx, dy, radius, radius, (270f + Time.time + offset) % 360f);
+            Drawf.tri(dx, dy, radius, radius, (360f + Time.time + offset) % 360f);
+        }
     }
 }
