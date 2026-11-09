@@ -15,6 +15,7 @@ import arc.util.io.Writes;
 import mindustry.Vars;
 import mindustry.content.Items;
 import mindustry.entities.Damage;
+import mindustry.entities.Effect;
 import mindustry.entities.Mover;
 import mindustry.entities.bullet.BasicBulletType;
 import mindustry.entities.bullet.BulletType;
@@ -354,7 +355,7 @@ public class SpinupTurret extends NevixTurret {
             
             Bullet b = type.create(this, this.team, bulletX, bulletY, shootAngle, -1f, (1f - velocityRnd) + Mathf.random(velocityRnd) + extraVelocity, lifeScl, null, mover, targetPos.x, targetPos.y);
             if(b != null) {
-                b.lifetime += rangerBoost() * 8f / b.speed;
+                b.lifetime += rangerBoost() * 8f / type.speed;
             }
             
             (shootEffect == null ? type.shootEffect : shootEffect).at(bulletX, bulletY, rotation + angleOffset, type.hitColor);
