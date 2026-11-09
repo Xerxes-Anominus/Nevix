@@ -310,7 +310,7 @@ public class SpinupTurret extends NevixTurret {
                     bullet(bullet, xOffset, yOffset, angle, mover);
                 }
             }, () -> barrelCounter++);
-            bullet.lifetime += rangerBoost() / bullet.speed;
+            bullet.lifetime += rangerBoost() * 8f / bullet.speed;
         }
         
         @Override
@@ -327,7 +327,7 @@ public class SpinupTurret extends NevixTurret {
         protected void shoot(BulletType type) {
             if (type == null) return;
             super.shoot(type);
-            type.lifetime += rangerBoost() / type.speed;
+            type.lifetime += rangerBoost() * 8f / type.speed;
             
             if (multiShot && Mathf.chance(0.4f)) {
                 extraShoot(type);
