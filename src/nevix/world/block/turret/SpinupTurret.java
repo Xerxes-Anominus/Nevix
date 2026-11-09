@@ -429,7 +429,6 @@ public class SpinupTurret extends NevixTurret {
         
         public void drawSpinupAura(float dx, float dy, float radius, float str, Color color, float layer) {
             Draw.z(layer);
-            Draw.blend(Blending.additive);
             Draw.color(color);
             
             float offset = this.y * Vars.world.width() - this.x;
