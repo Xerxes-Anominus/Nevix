@@ -15,6 +15,7 @@ import arc.util.io.Writes;
 import mindustry.Vars;
 import mindustry.content.Items;
 import mindustry.entities.Damage;
+import mindustry.entities.Mover;
 import mindustry.entities.bullet.BasicBulletType;
 import mindustry.entities.bullet.BulletType;
 import mindustry.entities.pattern.ShootAlternate;
@@ -135,6 +136,8 @@ public class SpinupTurret extends NevixTurret {
         }});
         
         upgradeBranch();
+        
+        
     }
     
     public static Upgrade
@@ -310,7 +313,6 @@ public class SpinupTurret extends NevixTurret {
                     bullet(bullet, xOffset, yOffset, angle, mover);
                 }
             }, () -> barrelCounter++);
-            bullet.lifetime += rangerBoost() * 8f / bullet.speed;
         }
         
         @Override
@@ -327,13 +329,58 @@ public class SpinupTurret extends NevixTurret {
         protected void shoot(BulletType type) {
             if (type == null) return;
             super.shoot(type);
-            type.lifetime += rangerBoost() * 8f / type.speed;
             
             if (multiShot && Mathf.chance(0.4f)) {
                 extraShoot(type);
                 extraShoot(type);
             }
             shootCount = Math.min(shootCount + 1, getMax());
+        }
+        
+        @Override
+        protected void bullet(BulletType type, float xOffset, float yOffset, float angleOffset, Mover mover){
+            queuedBullets --;
+
+            if(dead || (!consumeAmmoOnce && !hasAmmo())) return;
+
+            float
+            xSpread = Mathf.range(xRand),
+            bulletX = x + Angles.trnsx(rotation - 90, shootX + xOffset + xSpread, shootY + yOffset),
+            bulletY = y + Angles.trnsy(rotation - 90, shootX + xOffset + xSpread, shootY + yOffset),
+            shootAngle = rotation + angleOffset + Mathf.range(inaccuracy + type.inaccuracy);
+
+            float baseLife = (1f - lifeRnd) + Mathf.random(lifeRnd) + extraLife,
+                  lifeScl = type.scaleLife ? Mathf.clamp((baseLife + scaleLifetimeOffset) * Mathf.dst(bulletX, bulletY, targetPos.x, targetPos.y) / type.range, minRange() / type.range, range() / type.range) : baseLife;
+            
+            Bullet b = type.create(this, this.team, bulletX, bulletY, shootAngle, -1f, (1f - velocityRnd) + Mathf.random(velocityRnd) + extraVelocity, lifeScl, null, mover, targetPos.x, targetPos.y);
+            if(b != null) {
+                b.lifetime += rangerBoost() * 8f / b.speed;
+            }
+            
+            (shootEffect == null ? type.shootEffect : shootEffect).at(bulletX, bulletY, rotation + angleOffset, type.hitColor);
+            (smokeEffect == null ? type.smokeEffect : smokeEffect).at(bulletX, bulletY, rotation + angleOffset, type.hitColor);
+            (type.shootSound != Sounds.none ? type.shootSound : shootSound).at(bulletX, bulletY, Mathf.random(soundPitchMin, soundPitchMax), shootSoundVolume);
+
+            ammoUseEffect.at(
+                x - Angles.trnsx(rotation, ammoEjectBack),
+                y - Angles.trnsy(rotation, ammoEjectBack),
+                rotation * Mathf.sign(xOffset)
+            );
+
+            if(shake > 0){
+                Effect.shake(shake, shake, this);
+            }
+
+            curRecoil = 1f;
+            if(recoils > 0){
+                curRecoils[barrelCounter % recoils] = 1f;
+            }
+            heat = 1f;
+            totalShots++;
+
+            if(!consumeAmmoOnce){
+                useAmmo();
+            }
         }
         
         @Override
