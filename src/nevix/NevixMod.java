@@ -1,6 +1,8 @@
 package nevix;
 
+import arc.Events;
 import arc.util.CommandHandler;
+import mindustry.game.EventType.ClientLoadEvent;
 import mindustry.mod.Mod;
 import nevix.content.Turrets;
 import nevix.ui.DayNightPanel;
@@ -10,9 +12,11 @@ import nevix.world.DayNightCycle;
 
 public class NevixMod extends Mod {
     public NevixMod() {
-        NevixSettings.init();
-        DayNightPanel.init();
-        UpdateLog.init();
+        Events.on(ClientLoadEvent.class, event -> {
+            NevixSettings.init();
+            DayNightPanel.init();
+            UpdateLog.init();
+        });
     }
 
     @Override
