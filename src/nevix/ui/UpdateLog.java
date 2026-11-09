@@ -1,12 +1,10 @@
 package nevix.ui;
 
 import arc.Core;
-import arc.Events;
 import arc.scene.ui.layout.Scl;
 import arc.scene.ui.layout.Table;
 import arc.util.Align;
 import mindustry.Vars;
-import mindustry.game.EventType.ClientLoadEvent;
 import mindustry.gen.Icon;
 import mindustry.ui.dialogs.BaseDialog;
 
@@ -17,13 +15,11 @@ public final class UpdateLog {
     private UpdateLog() {}
 
     public static void init() {
-        Events.on(ClientLoadEvent.class, event -> {;
-            Vars.ui.menufrag.addButton(
-                Core.bundle.get(PREFIX + "name"),
-                Icon.book,
-                UpdateLog::show
-            );
-        });
+        Vars.ui.menufrag.addButton(
+        Core.bundle.get(PREFIX + "name"),
+        Icon.book,
+        UpdateLog::show
+        );
     }
     
     private static int versionCount() {
