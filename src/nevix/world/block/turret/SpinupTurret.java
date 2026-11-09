@@ -133,6 +133,8 @@ public class SpinupTurret extends NevixTurret {
             fragBullets = 3;
             fragBullet = frag_bullet;
         }});
+        
+        upgradeBranch();
     }
     
     public static Upgrade
