@@ -421,7 +421,7 @@ public class SpinupTurret extends NevixTurret {
                 Color[] cor = {Color.valueOf("3f3f3f"), Color.valueOf("7f7f7f"), Color.valueOf("bfbfbf"), Color.valueOf("ffffff")};
                 
                 for(int i = 0; i < 4; i++) {
-                    drawSpinupAura(dx, dy, 6f - 0.2f * i, 2.75f - 0.25f * i, cor[i], Layer.effect + i);
+                    drawSpinupAura(dx, dy, 6f, 3f - 0.25f * i, cor[i], Layer.effect - 10f + i * 0.1f);
                 }
             }
             Draw.reset();
