@@ -71,7 +71,7 @@ public class BerserkerTurret extends NevixTurret {
         size = 3;
         
         reload = 60f;
-        range = 5 * Vars.tilesize;
+        range = 10 * Vars.tilesize;
         
         shootSound = Sounds.shootFuse;
         shoot = new ShootSpread(5, 12f);
@@ -251,7 +251,7 @@ public class BerserkerTurret extends NevixTurret {
             if(rageFireTimer >= rageFireInterval) {
                 rageFireTimer %= rageFireInterval;
                 rageShots++;
-                fireFree(lastType, -1f, rageShots % 3 == 0); // âm thanh thưa bớt cho đỡ ồn
+                fireFree(peekAmmo(), peekAmmo().damage * berserkDamageMult(), true); // âm thanh thưa bớt cho đỡ ồn
             }
 
             if(rageTimer <= 0f) endRage(t);
@@ -271,7 +271,7 @@ public class BerserkerTurret extends NevixTurret {
             reloadCounter = 0f;
 
             if(lastType != null) {
-                fireFree(lastType, lastType.damage * CHARGE_DAMAGE[t], true);
+                fireFree(peekAmmo(), peekAmmo().damage * CHARGE_DAMAGE[t], true);
                 Effect.shake(6f, 6f, this);
             }
         }
@@ -311,20 +311,6 @@ public class BerserkerTurret extends NevixTurret {
         @Override
         public void draw() {
             super.draw();
-
-            if(bloodShieldHealth > 0f) {
-                Draw.z(Layer.effect);
-                Draw.color(Pal.remove, 0.3f + 0.4f * Mathf.clamp(bloodShieldHealth / maxHealth()));
-                Lines.stroke(1.5f);
-                Lines.circle(x, y, block.size * Vars.tilesize * 0.65f);
-            }
-            if(inRage) {
-                Draw.z(Layer.effect);
-                Draw.color(Pal.remove, 0.5f + 0.3f * Mathf.absin(Time.time, 4f, 1f));
-                Lines.stroke(2f);
-                Lines.circle(x, y, block.size * Vars.tilesize * 0.8f);
-            }
-            Draw.reset();
         }
     }
 }
