@@ -6,13 +6,14 @@ import mindustry.type.Category;
 import mindustry.type.ItemStack;
 import mindustry.world.Block;
 import mindustry.world.draw.DrawTurret;
+import nevix.world.block.turret.BerserkerTurret;
 import nevix.world.block.turret.SpinupTurret;
 
 public final class Turrets {
     private Turrets() {}
 
     public static Block
-    spinup;
+    spinup, berserker;
 
     public static void load() {
         spinup = new SpinupTurret("spinup") {{
@@ -28,6 +29,10 @@ public final class Turrets {
                     progress = PartProgress.recoil;
                 }});
             }};
+        }};
+        
+        berserker = new BerserkerTurret("berserker") {{
+            requirements(Category.turret, ItemStack.with(Items.titanium, 300, Items.thorium, 100, Items.graphite, 850, Items.metaglass, 500));
         }};
     }
 }
