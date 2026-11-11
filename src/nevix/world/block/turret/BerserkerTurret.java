@@ -1,5 +1,6 @@
 package nevix.world.block.turret;
 
+import arc.graphics.Blending;
 import arc.graphics.Color;
 import arc.graphics.g2d.Draw;
 import arc.graphics.g2d.Fill;
@@ -177,7 +178,7 @@ public class BerserkerTurret extends NevixTurret {
             Groups.bullet.intersect(this.x, this.y, 80f, 80f).each(b -> {
                 float dx = b.x - this.x;
                 float dy = b.y - this.y;
-                if(dx * dx + dy * dy <= 40f) {
+                if(dx * dx + dy * dy <= 40f && b.team != this.team) {
                     b.remove();
                     bloodShieldHealth -= b.damage;
                     if(bloodShieldHealth <= 0f) return;
@@ -277,12 +278,13 @@ public class BerserkerTurret extends NevixTurret {
             super.draw();
             
             if(bloodShieldHealth > 0f) {
-                Draw.color(Color.red.a(0.5f));
+                Draw.color(Color.valueOf("ff000080"));
                 Draw.z(Layer.effect);
                 
                 Fill.circle(this.x, this.y, 40f);
                 
                 Draw.color(Color.red);
+                Draw.blend(Blending.additive);
                 Draw.z(Layer.effect + 0.1f);
                 
                 float id = this.y * Vars.world.width() - this.x;
