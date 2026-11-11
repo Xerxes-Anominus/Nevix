@@ -1,11 +1,7 @@
 package nevix.world.block.turret;
 
 import arc.Core;
-import arc.graphics.Blending;
 import arc.graphics.Color;
-import arc.graphics.g2d.Draw;
-import arc.graphics.g2d.Fill;
-import arc.graphics.g2d.Lines;
 import arc.math.Angles;
 import arc.math.Mathf;
 import arc.scene.ui.layout.Table;
@@ -26,7 +22,6 @@ import mindustry.gen.Bullet;
 import mindustry.gen.Healthc;
 import mindustry.gen.Hitboxc;
 import mindustry.gen.Sounds;
-import mindustry.graphics.Drawf;
 import mindustry.graphics.Layer;
 import mindustry.graphics.Pal;
 import mindustry.type.ItemStack;
@@ -276,7 +271,7 @@ public class SpinupTurret extends NevixTurret {
             clampHaste();
             super.updateTile();
             
-            if (isShooting()) {
+            if (isShooting() && hasAmmo()) {
                 nonShootTimer = 0f;
             } else if (shootCount > 0) {
                 nonShootTimer += Time.delta;
@@ -408,36 +403,6 @@ public class SpinupTurret extends NevixTurret {
             shootCount = r.i();
             max = r.i();
             nonShootTimer = r.f();
-        }
-        
-        @Override
-        public void draw() {
-            super.draw();
-            
-            if(isShooting && peekAmmo() != null && hasAmmo()) {
-                float
-                dx = this.x + 4f * Mathf.cosDeg(this.rotation - 180f),
-                dy = this.y + 4f * Mathf.sinDeg(this.rotation - 180f);
-                Color[] cor = {Color.valueOf("3f3f3f"), Color.valueOf("7f7f7f"), Color.valueOf("bfbfbf"), Color.valueOf("ffffff")};
-                
-                for(int i = 0; i < 4; i++) {
-                    drawSpinupAura(dx, dy, 4f, 2f - 0.25f * i, cor[i].a(Math.min(1f, shootCount * 0.1f)), Layer.effect + i * 0.1f);
-                }
-            }
-            Draw.reset();
-        }
-        
-        public void drawSpinupAura(float dx, float dy, float radius, float str, Color color, float layer) {
-            Draw.z(layer);
-            Draw.color(color);
-            
-            float offset = this.y * Vars.world.width() - this.x;
-            Lines.stroke(str);
-            Lines.circle(dx, dy, radius);
-            Drawf.tri(dx, dy, radius, radius, (90f + Time.time + offset) % 360f);
-            Drawf.tri(dx, dy, radius, radius, (180f + Time.time + offset) % 360f);
-            Drawf.tri(dx, dy, radius, radius, (270f + Time.time + offset) % 360f);
-            Drawf.tri(dx, dy, radius, radius, (360f + Time.time + offset) % 360f);
         }
     }
 }
