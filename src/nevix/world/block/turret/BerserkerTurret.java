@@ -70,6 +70,7 @@ public class BerserkerTurret extends NevixTurret {
                     owner.bloodShieldHealth += bullet.damage / 2f;
                 }
             }
+            super.hitEntity(bullet, entity, health);
         }
     }
     
@@ -284,7 +285,7 @@ public class BerserkerTurret extends NevixTurret {
                 Fill.circle(this.x, this.y, 40f);
                 
                 Draw.color(Color.red);
-                Draw.blend(Blending.additive);
+                Draw.blend(Blending.normal);
                 Draw.z(Layer.effect + 0.1f);
                 
                 float id = this.y * Vars.world.width() - this.x;
