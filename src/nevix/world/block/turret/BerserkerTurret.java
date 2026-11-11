@@ -33,6 +33,10 @@ import mindustry.graphics.Layer;
 import mindustry.graphics.Pal;
 import mindustry.type.ItemStack;
 import mindustry.ui.Bar;
+import mindustry.world.meta.Stat;
+import mindustry.world.meta.StatUnit;
+import nevix.world.meta.NevixStat;
+import nevix.world.meta.NevixStatUnit;
 
 public class BerserkerTurret extends NevixTurret {
     public class BerserkerBulletType extends ShrapnelBulletType {
@@ -123,18 +127,24 @@ public class BerserkerTurret extends NevixTurret {
     }
     
     public static Upgrade
-    reloader_0, reloader_1, shrapness, endurance,
-    enrage_0, enrage_1, enrage_2, blood_shield;
+    berserker_reloader_0,
+    berserker_reloader_1,
+    berserker_shrapness,
+    berserker_endurance,
+    berserker_enrage_0,
+    berserker_enrage_1,
+    berserker_enrage_2,
+    berserker_blood_shield;
 
     public void upgradeBranch() {
-        reloader_0 = addUpgrade("reloader-0", "Increase fire rate by 25%", ItemStack.with(Items.copper, 200, Items.lead, 200, Items.graphite, 50), (BerserkerTurretBuild build) -> build.reloaderTier++, (BerserkerTurretBuild build) -> build.reloaderTier = 0);
-        reloader_1 = addUpgrade("reloader-1", "Increase fire rate by 50%", ItemStack.with(Items.copper, 400, Items.lead, 400, Items.graphite, 200, Items.titanium, 50), (BerserkerTurretBuild build) -> build.reloaderTier++, (BerserkerTurretBuild build) -> build.reloaderTier = 0).levelAfter(reloader_0);
-        shrapness = addUpgrade("shrapness", "Base damage increased by 50%", ItemStack.with(Items.copper, 300, Items.lead, 300, Items.graphite, 100, Items.titanium, 20), (BerserkerTurretBuild build) -> build.hasShrapness = true, (BerserkerTurretBuild build) -> build.hasShrapness = false).removes(endurance);
-        endurance = addUpgrade("endurance", "Increases maximum health by 100%", ItemStack.with(Items.copper, 500, Items.lead, 500, Items.graphite, 300, Items.titanium, 100), (BerserkerTurretBuild build) -> build.hasEndurance = true, (BerserkerTurretBuild build) -> build.hasEndurance = false).removes(shrapness);
-        blood_shield = addUpgrade("blood-shield", "Each time it deals damage, Blood Shield restores an amount of health equal to 50% of the bullet's damage. Healing beyond full health becomes Blood Shield points, which have no upper limit. Blood Shield points absorb all incoming damage; a hit larger than the remaining points breaks the shield and the excess damage is nullified. Nearby enemy bullets are blocked while it holds.", ItemStack.with(Items.copper, 500, Items.lead, 500, Items.graphite, 300, Items.titanium, 50), (BerserkerTurretBuild build) -> build.hasBloodShield = true, (BerserkerTurretBuild build) -> build.hasBloodShield = false);
-        enrage_0 = addUpgrade("enrage-0", "When 50 rounds are fired, enter a Rage state for 1 second. While in the Rage state, fire continuously without stopping (without consuming ammo), while pulling enemies in and recovering 0.5% of max HP for each enemy hit (if at full HP, the entire healing amount will be converted into Blood Shield points), and increasing damage dealt by 25%. When the Rage state ends, fire a charged shot that deals 3000% damage.", ItemStack.with(Items.copper, 400, Items.lead, 400, Items.graphite, 250), (BerserkerTurretBuild build) -> build.enrageTier++, (BerserkerTurretBuild build) -> build.enrageTier = 0).requires(blood_shield);
-        enrage_1 = addUpgrade("enrage-1", "When 40 rounds are fired, enter a Rage state for 2 seconds. While in the Rage state, fire continuously without stopping (without consuming ammo), while pulling enemies in and recovering 0.75% of max HP for each enemy hit (if at full HP, the entire healing amount will be converted into Blood Shield points), and increasing damage dealt by 50%. When the Rage state ends, fire a charged shot that deals 5000% damage.", ItemStack.with(Items.copper, 900, Items.lead, 1000, Items.graphite, 600, Items.titanium, 500, Items.thorium, 100), (BerserkerTurretBuild build) -> build.enrageTier++, (BerserkerTurretBuild build) -> build.enrageTier = 0).levelAfter(enrage_0);
-        enrage_2 = addUpgrade("enrage-2", "When 30 rounds are fired, enter a Rage state for 3 seconds. While in the Rage state, fire continuously without stopping (without consuming ammo), while pulling enemies in and recovering 1.0% of max HP for each enemy hit (if at full HP, the entire healing amount will be converted into Blood Shield points), and increasing damage dealt by 100%. When the Rage state ends, fire a charged shot that deals 10000% damage.", ItemStack.with(Items.copper, 2000, Items.lead, 2000, Items.graphite, 1200, Items.titanium, 800, Items.thorium, 300), (BerserkerTurretBuild build) -> build.enrageTier++, (BerserkerTurretBuild build) -> build.enrageTier = 0).levelAfter(enrage_1);
+        berserker_reloader_0 = addUpgrade("berserker-reloader-0", "Increase fire rate by 25%", ItemStack.with(Items.copper, 200, Items.lead, 200, Items.graphite, 50), (BerserkerTurretBuild build) -> build.reloaderTier++, (BerserkerTurretBuild build) -> build.reloaderTier = 0);
+        berserker_reloader_1 = addUpgrade("berserker-reloader-1", "Increase fire rate by 50%", ItemStack.with(Items.copper, 400, Items.lead, 400, Items.graphite, 200, Items.titanium, 50), (BerserkerTurretBuild build) -> build.reloaderTier++, (BerserkerTurretBuild build) -> build.reloaderTier = 0).levelAfter(berserker_reloader_0);
+        berserker_shrapness = addUpgrade("berserker-shrapness", "Base damage increased by 50%", ItemStack.with(Items.copper, 300, Items.lead, 300, Items.graphite, 100, Items.titanium, 20), (BerserkerTurretBuild build) -> build.hasShrapness = true, (BerserkerTurretBuild build) -> build.hasShrapness = false).removes(berserker_endurance);
+        berserker_endurance = addUpgrade("berserker-endurance", "Increases maximum health by 100%", ItemStack.with(Items.copper, 500, Items.lead, 500, Items.graphite, 300, Items.titanium, 100), (BerserkerTurretBuild build) -> build.hasEndurance = true, (BerserkerTurretBuild build) -> build.hasEndurance = false).removes(berserker_shrapness);
+        berserker_blood_shield = addUpgrade("berserker-blood-shield", "Each time it deals damage, Blood Shield restores an amount of health equal to 50% of the bullet's damage. Healing beyond full health becomes Blood Shield points, which have no upper limit. Blood Shield points absorb all incoming damage; a hit larger than the remaining points breaks the shield and the excess damage is nullified. Nearby enemy bullets are blocked while it holds.", ItemStack.with(Items.copper, 500, Items.lead, 500, Items.graphite, 300, Items.titanium, 50), (BerserkerTurretBuild build) -> build.hasBloodShield = true, (BerserkerTurretBuild build) -> build.hasBloodShield = false);
+        berserker_enrage_0 = addUpgrade("berserker-enrage-0", "When 50 rounds are fired, enter a Rage state for 1 second. While in the Rage state, fire continuously without stopping (without consuming ammo), while pulling enemies in and recovering 0.5% of max HP for each enemy hit (if at full HP, the entire healing amount will be converted into Blood Shield points), and increasing damage dealt by 25%. When the Rage state ends, fire a charged shot that deals 3000% damage.", ItemStack.with(Items.copper, 400, Items.lead, 400, Items.graphite, 250), (BerserkerTurretBuild build) -> build.enrageTier++, (BerserkerTurretBuild build) -> build.enrageTier = 0).requires(berserker_blood_shield);
+        berserker_enrage_1 = addUpgrade("berserker-enrage-1", "When 40 rounds are fired, enter a Rage state for 2 seconds. While in the Rage state, fire continuously without stopping (without consuming ammo), while pulling enemies in and recovering 0.75% of max HP for each enemy hit (if at full HP, the entire healing amount will be converted into Blood Shield points), and increasing damage dealt by 50%. When the Rage state ends, fire a charged shot that deals 5000% damage.", ItemStack.with(Items.copper, 900, Items.lead, 1000, Items.graphite, 600, Items.titanium, 500, Items.thorium, 100), (BerserkerTurretBuild build) -> build.enrageTier++, (BerserkerTurretBuild build) -> build.enrageTier = 0).levelAfter(berserker_enrage_0);
+        berserker_enrage_2 = addUpgrade("berserker-enrage-2", "When 30 rounds are fired, enter a Rage state for 3 seconds. While in the Rage state, fire continuously without stopping (without consuming ammo), while pulling enemies in and recovering 1.0% of max HP for each enemy hit (if at full HP, the entire healing amount will be converted into Blood Shield points), and increasing damage dealt by 100%. When the Rage state ends, fire a charged shot that deals 10000% damage.", ItemStack.with(Items.copper, 2000, Items.lead, 2000, Items.graphite, 1200, Items.titanium, 800, Items.thorium, 300), (BerserkerTurretBuild build) -> build.enrageTier++, (BerserkerTurretBuild build) -> build.enrageTier = 0).levelAfter(berserker_enrage_1);
     }
     
     @Override
@@ -142,13 +152,13 @@ public class BerserkerTurret extends NevixTurret {
         super.setBars();
         
         addBar("berserker-shoot-count-bar", build -> new Bar(
-        () -> Core.bundle.get("berserker-shoot-count-bar") + ": " + ((BerserkerTurretBuild)build).shootCount,
+        () -> Core.bundle.get("nevix-berserker-shoot-count") + ": " + ((BerserkerTurretBuild)build).shootCount,
         () -> Pal.accent,
         () -> 1f
         ));
         
         addBar("berserker-shield-health", build -> new Bar(
-        () -> Core.bundle.get("berserker-shield-health") + ": " + Math.max(0f, ((BerserkerTurretBuild)build).bloodShieldHealth),
+        () -> Core.bundle.get("nevix-berserker-shield-health") + ": " + Math.max(0f, ((BerserkerTurretBuild)build).bloodShieldHealth),
         () -> Color.red,
         () -> 1f
         ));
@@ -181,7 +191,65 @@ public class BerserkerTurret extends NevixTurret {
         
         @Override
         public void getStats(Table table) {
+            addStat(table, NevixStat.generals, "", Pal.accent);
+            addStat(table, Stat.health, "" + maxHealth() + (hasEndurance ? " [gray](+100%)" : ""));
+            addStat(table, Stat.range, "" + range() + " " + NevixStatUnit.get(NevixStatUnit.tile));
+            addStat(table, Stat.reload, "" + (reloaderTier == 1 ? "6.66666/" + NevixStatUnit.get(StatUnit.seconds) : (reloaderTier == 2 ? "10/" + NevixStatUnit.get(StatUnit.seconds) : "5/" + NevixStatUnit.get(StatUnit.seconds))));
             
+            addStat(table, NevixStat.none, "");
+            
+            addStat(table, NevixStat.ammo, "", Pal.accent);
+            if(peekAmmo() != null) {
+                addBulletStatTable(table, bt -> {
+                    addBulletStat(bt, Stat.damage, "" + peekAmmo().damage, 1);
+                    addBulletStat(bt, NevixStat.pierce, "True", 1);
+                });
+            }
+            
+            addStat(table, NevixStat.special, "", Pal.accent);
+            if(hasShrapness) {
+                addBulletStatTable(table, bt -> {
+                    addBulletStat(bt, NevixStat.none, "hasShrapness");
+                });
+            }
+            if(hasEndurance) {
+                addBulletStatTable(table, bt -> {
+                    addBulletStat(bt, NevixStat.none, "hasEndurance");
+                });
+            }
+            
+            if(reloaderTier == 1) {
+                addBulletStatTable(table, bt -> {
+                    addBulletStat(bt, NevixStat.none, "reloader1");
+                });
+            }
+            if(reloaderTier == 2) {
+                addBulletStatTable(table, bt -> {
+                    addBulletStat(bt, NevixStat.none, "reloader2");
+                });
+            }
+            
+            if(hasBloodShield) {
+                addBulletStatTable(table, bt -> {
+                    addBulletStat(bt, NevixStat.none, "hasBloodShield");
+                });
+            }
+            
+            if(enrageTier == 1) {
+                addBulletStatTable(table, bt -> {
+                    addBulletStat(bt, NevixStat.none, "enrage1");
+                });
+            }
+            if(enrageTier == 2) {
+                addBulletStatTable(table, bt -> {
+                    addBulletStat(bt, NevixStat.none, "enrage2");
+                });
+            }
+            if(enrageTier == 3) {
+                addBulletStatTable(table, bt -> {
+                    addBulletStat(bt, NevixStat.none, "enrage3");
+                });
+            }
         }
         
         @Override
@@ -221,7 +289,7 @@ public class BerserkerTurret extends NevixTurret {
             
             Groups.bullet.intersect(this.x - 40f, this.y - 40f, 80f, 80f).each(b -> {
                 if(bloodShieldHealth <= 0f) return;
-                if(b.within(this, 40f)) {
+                if(b.within(this, 40f) && b.team != this.team) {
                     bloodShieldHealth -= b.damage;
                     Fx.absorb.at(b.x, b.y);
                     b.remove();
@@ -282,6 +350,10 @@ public class BerserkerTurret extends NevixTurret {
             }
         }
         
+        public float rageDuration() {
+            return (enrageTier == 1 ? 60f : (enrageTier == 2 ? 120f : (enrageTier == 3 ? 180f : 0f)));
+        }
+        
         public void updateRage() {
             int needed = (enrageTier == 1 ? 50 : (enrageTier == 2 ? 40 : (enrageTier == 3 ? 30 : Integer.MAX_VALUE)));
             
@@ -290,12 +362,12 @@ public class BerserkerTurret extends NevixTurret {
             inRage = true;
             rageTimer += Time.delta;
             rageFireTimer += Time.delta;
-            if(rageFireTimer >= 12f && rageTimer < 180f) {
+            if(rageFireTimer >= 12f && rageTimer < rageDuration()) {
                 rageFireTimer -= 12f;
                 shoot(peekAmmo());
             }
             
-            if(rageTimer >= 180f) {
+            if(rageTimer >= rageDuration()) {
                 lastShoot = true;
                 shoot(chargeShoot);
                 lastShoot = false;
