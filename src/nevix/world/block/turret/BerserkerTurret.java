@@ -1,6 +1,9 @@
 package nevix.world.block.turret;
 
 import arc.graphics.Color;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.Fill;
+import arc.graphics.g2d.Lines;
 import arc.math.Angles;
 import arc.math.Mathf;
 import arc.scene.ui.layout.Table;
@@ -17,7 +20,10 @@ import mindustry.entities.bullet.ShrapnelBulletType;
 import mindustry.entities.pattern.ShootSpread;
 import mindustry.gen.Bullet;
 import mindustry.gen.Groups;
+import mindustry.gen.Hitboxc;
 import mindustry.gen.Sounds;
+import mindustry.graphics.Drawf;
+import mindustry.graphics.Layer;
 import mindustry.type.ItemStack;
 import mindustry.ui.Bar;
 
@@ -54,6 +60,15 @@ public class BerserkerTurret extends NevixTurret {
                 }
             }
             super.init(bullet);
+        }
+        
+        @Override
+        public void hitEntity(Bullet bullet, Hitboxc entity, float health) {
+            if(bullet.owner instanceof BerserkerTurretBuild owner) {
+                if(owner.hasBloodShield) {
+                    owner.bloodShieldHealth += bullet.damage / 2f;
+                }
+            }
         }
     }
     
@@ -107,6 +122,16 @@ public class BerserkerTurret extends NevixTurret {
         () -> 1f
         ));
     }
+    
+    public BerserkerBulletType chargeShoot = new BerserkerBulletType() {{
+        damage = 120;
+        ammoMultiplier = 5;
+        width = 40f;
+        length = 140f;
+        status = StatusEffects.blasted;
+        statusDuration = 120f;
+        toColor = Items.blastCompound.color;
+    }};
     
     public class BerserkerTurretBuild extends NevixTurretBuild {
         public boolean hasShrapness;
@@ -228,7 +253,7 @@ public class BerserkerTurret extends NevixTurret {
             
             if(rageTimer >= 180f) {
                 lastShoot = true;
-                shoot(peekAmmo());
+                shoot(chargeShoot);
                 lastShoot = false;
                 inRage = false;
                 rageTimer = 0f;
@@ -245,6 +270,28 @@ public class BerserkerTurret extends NevixTurret {
             updateShield();
             updateRage();
             super.updateTile();
+        }
+        
+        @Override
+        public void draw() {
+            super.draw();
+            
+            if(bloodShieldHealth > 0f) {
+                Draw.color(Color.red.a(0.5f));
+                Draw.z(Layer.effect);
+                
+                Fill.circle(this.x, this.y, 40f);
+                
+                Draw.color(Color.red);
+                Draw.z(Layer.effect + 0.1f);
+                
+                float id = this.y * Vars.world.width() - this.x;
+                Lines.stroke(2f);
+                Lines.arc(this.x, this.y, 38f, 1f / 6, (Time.time + id) % 360f);
+                Lines.arc(this.x, this.y, 40f, 1f / 4, (120f + Time.time - id) % 360f);
+                Lines.arc(this.x, this.y, 42f, 1f / 5, (150f - Time.time + id) % 360f);
+                Draw.reset();
+            }
         }
         
         @Override
