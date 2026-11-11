@@ -29,33 +29,28 @@ public class BerserkerTurret extends NevixTurret {
         
         @Override
         public void init(Bullet bullet) {
-            if(bullet.owner instanceof BerserkerTurretBuild owner && owner.isValid()) {
-                BerserkerTurretBuild o = owner;
+            if(bullet.owner instanceof BerserkerTurretBuild o && o.isValid()) {
                 if(o.hasShrapness && !o.inRage && !o.lastShoot) {
                     bullet.damage *= 1.5f;
                 }
                 if(o.hasBloodShield && !o.inRage && !o.lastShoot) {
-                    o.bloodShieldHealth += bullet.damage / 2;
+                    o.bloodShieldHealth += bullet.damage / 2f;
                 }
                 if(o.inRage && !o.lastShoot) {
-                    switch(o.enrageTier) {
-                        case 1 -> {
-                            bullet.damage *= 1.5f;
-                            return;
-                        }
-                        case 2 -> {
-                            bullet.damage *= 2f;
-                            return;
-                        }
-                        case 3 -> {
-                            bullet.damage *= 2.5f;
-                            return;
-                        }
-                        default -> {
-                            bullet.damage *= 1f;
-                            return;
-                        }
-                    }
+                    bullet.damage *= switch(o.enrageTier) {
+                        case 1 -> 1.5f;
+                        case 2 -> 2f;
+                        case 3 -> 2.5f;
+                        default -> 1f;
+                    };
+                }
+                if(o.lastShoot) {
+                    bullet.damage *= switch(o.enrageTier) {
+                        case 1 -> 30f;
+                        case 2 -> 50f;
+                        case 3 -> 100f;
+                        default -> 1f;
+                    };
                 }
             }
             super.init(bullet);
@@ -189,9 +184,6 @@ public class BerserkerTurret extends NevixTurret {
                   lifeScl = type.scaleLife ? Mathf.clamp((baseLife + scaleLifetimeOffset) * Mathf.dst(bulletX, bulletY, targetPos.x, targetPos.y) / type.range, minRange() / type.range, range() / type.range) : baseLife;
             
             Bullet b = type.create(this, this.team, bulletX, bulletY, shootAngle, -1f, (1f - velocityRnd) + Mathf.random(velocityRnd) + extraVelocity, lifeScl, null, mover, targetPos.x, targetPos.y);
-            if(rageTimer >= 180f) {
-                b.damage = b.type.damage * (enrageTier == 1 ? 30 : (enrageTier == 2 ? 50 : 100));
-            }
             
             (shootEffect == null ? type.shootEffect : shootEffect).at(bulletX, bulletY, rotation + angleOffset, type.hitColor);
             (smokeEffect == null ? type.smokeEffect : smokeEffect).at(bulletX, bulletY, rotation + angleOffset, type.hitColor);
@@ -229,8 +221,8 @@ public class BerserkerTurret extends NevixTurret {
             inRage = true;
             rageTimer += Time.delta;
             rageFireTimer += Time.delta;
-            if(rageFireTimer % 12f == 0 && rageTimer < 180f) {
-                rageFireTimer %= 12f;
+            if(rageFireTimer >= 12f && rageTimer < 180f) {
+                rageFireTimer -= 12f;
                 shoot(peekAmmo());
             }
             
