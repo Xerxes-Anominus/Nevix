@@ -31,10 +31,10 @@ public class BerserkerTurret extends NevixTurret {
         public void init(Bullet bullet) {
             if(bullet.owner instanceof BerserkerTurretBuild owner && owner.isValid()) {
                 BerserkerTurretBuild o = owner;
-                if(o.hasShrapness && !o.inRage) {
+                if(o.hasShrapness && !o.inRage && !o.lastShoot) {
                     bullet.damage *= 1.5f;
                 }
-                if(o.hasBloodShield && !o.inRage) {
+                if(o.hasBloodShield && !o.inRage && !o.lastShoot) {
                     o.bloodShieldHealth += bullet.damage / 2;
                 }
                 if(o.inRage && !o.lastShoot) {
@@ -58,6 +58,7 @@ public class BerserkerTurret extends NevixTurret {
                     }
                 }
             }
+            super.init(bullet);
         }
     }
     
@@ -140,6 +141,8 @@ public class BerserkerTurret extends NevixTurret {
         
         @Override
         public void updateShooting() {
+            if(inRage) return;
+            
             float threshold = reload - reload * (reloaderTier == 0 ? 0f : (reloaderTier == 1 ? 0.25f : 0.5f));
             if (reloadCounter >= threshold && !charging() && shootWarmup >= minWarmup) {
                 BulletType type = peekAmmo();
@@ -164,10 +167,10 @@ public class BerserkerTurret extends NevixTurret {
         
         @Override
         protected void shoot(BulletType type) {
-            if(inRage) return;
-            
             super.shoot(type);
-            shootCount++;
+            if(!inRage) {
+                shootCount++;
+            }
         }
         
         @Override
@@ -244,6 +247,9 @@ public class BerserkerTurret extends NevixTurret {
         
         @Override
         public void updateTile() {
+            if(enrageTier == 0) {
+                shootCount = 0;
+            }
             updateShield();
             updateRage();
             super.updateTile();
