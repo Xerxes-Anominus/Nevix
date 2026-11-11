@@ -1,5 +1,6 @@
 package nevix.world.block.turret;
 
+import arc.Core;
 import arc.graphics.Blending;
 import arc.graphics.Color;
 import arc.graphics.g2d.Draw;
@@ -25,6 +26,7 @@ import mindustry.gen.Hitboxc;
 import mindustry.gen.Sounds;
 import mindustry.graphics.Drawf;
 import mindustry.graphics.Layer;
+import mindustry.graphics.Pal;
 import mindustry.type.ItemStack;
 import mindustry.ui.Bar;
 
@@ -50,6 +52,11 @@ public class BerserkerTurret extends NevixTurret {
                         case 3 -> 2.5f;
                         default -> 1f;
                     };
+                    if(o.health < o.maxHealth()) {
+                        o.heal(o.maxHealth() * 0.01f);
+                    }else{
+                        o.bloodShieldHealth += o.maxHealth * 0.01f;
+                    }
                 }
                 if(o.lastShoot) {
                     bullet.damage *= switch(o.enrageTier) {
@@ -58,6 +65,11 @@ public class BerserkerTurret extends NevixTurret {
                         case 3 -> 100f;
                         default -> 1f;
                     };
+                    if(o.health < o.maxHealth()) {
+                        o.heal(o.maxHealth() * 0.01f);
+                    }else{
+                        o.bloodShieldHealth += o.maxHealth() * 0.01f;
+                    }
                 }
             }
             super.init(bullet);
@@ -66,7 +78,7 @@ public class BerserkerTurret extends NevixTurret {
         @Override
         public void hitEntity(Bullet bullet, Hitboxc entity, float health) {
             if(bullet.owner instanceof BerserkerTurretBuild owner) {
-                if(owner.hasBloodShield) {
+                if(owner.hasBloodShield && !owner.inRage && !owner.lastShoot) {
                     owner.bloodShieldHealth += bullet.damage / 2f;
                 }
             }
@@ -119,7 +131,13 @@ public class BerserkerTurret extends NevixTurret {
         super.setBars();
         
         addBar("berserker-shoot-count-bar", build -> new Bar(
-        () -> "Shoot Count: " + ((BerserkerTurretBuild)build).shootCount,
+        () -> Core.bundle.get("berserker-shoot-count-bar") + ": " + ((BerserkerTurretBuild)build).shootCount,
+        () -> Pal.accent,
+        () -> 1f
+        ));
+        
+        addBar("berserker-shield-health", build -> new Bar(
+        () -> Core.bundle.get("berserker-shield-health") + ": " + Math.max(0f, ((BerserkerTurretBuild)build).bloodShieldHealth),
         () -> Color.red,
         () -> 1f
         ));
@@ -179,7 +197,7 @@ public class BerserkerTurret extends NevixTurret {
             Groups.bullet.intersect(this.x, this.y, 80f, 80f).each(b -> {
                 float dx = b.x - this.x;
                 float dy = b.y - this.y;
-                if(dx * dx + dy * dy <= 40f && b.team != this.team) {
+                if(dx * dx + dy * dy <= 40f * 40 && b.team != this.team) {
                     b.remove();
                     bloodShieldHealth -= b.damage;
                     if(bloodShieldHealth <= 0f) return;
@@ -268,6 +286,9 @@ public class BerserkerTurret extends NevixTurret {
         public void updateTile() {
             if(enrageTier == 0) {
                 shootCount = 0;
+            }
+            if(!hasBloodShield) {
+                bloodShieldHealth = 0f;
             }
             updateShield();
             updateRage();
