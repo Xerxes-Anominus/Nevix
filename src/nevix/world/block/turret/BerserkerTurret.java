@@ -13,6 +13,7 @@ import arc.util.Time;
 import arc.util.io.Reads;
 import arc.util.io.Writes;
 import mindustry.Vars;
+import mindustry.content.Fx;
 import mindustry.content.Items;
 import mindustry.content.StatusEffects;
 import mindustry.entities.Effect;
@@ -20,10 +21,13 @@ import mindustry.entities.Mover;
 import mindustry.entities.bullet.BulletType;
 import mindustry.entities.bullet.ShrapnelBulletType;
 import mindustry.entities.pattern.ShootSpread;
+import mindustry.gen.Building;
 import mindustry.gen.Bullet;
 import mindustry.gen.Groups;
+import mindustry.gen.Healthc;
 import mindustry.gen.Hitboxc;
 import mindustry.gen.Sounds;
+import mindustry.gen.Teamc;
 import mindustry.graphics.Drawf;
 import mindustry.graphics.Layer;
 import mindustry.graphics.Pal;
@@ -35,29 +39,10 @@ public class BerserkerTurret extends NevixTurret {
         public BerserkerBulletType() {
             super();
         }
-        
+
         @Override
         public void init(Bullet bullet) {
             if(bullet.owner instanceof BerserkerTurretBuild o && o.isValid()) {
-                if(o.hasShrapness && !o.inRage && !o.lastShoot) {
-                    bullet.damage *= 1.5f;
-                }
-                if(o.hasBloodShield && !o.inRage && !o.lastShoot) {
-                    o.bloodShieldHealth += bullet.damage / 2f;
-                }
-                if(o.inRage && !o.lastShoot) {
-                    bullet.damage *= switch(o.enrageTier) {
-                        case 1 -> 1.5f;
-                        case 2 -> 2f;
-                        case 3 -> 2.5f;
-                        default -> 1f;
-                    };
-                    if(o.health < o.maxHealth()) {
-                        o.heal(o.maxHealth() * 0.01f);
-                    }else{
-                        o.bloodShieldHealth += o.maxHealth * 0.01f;
-                    }
-                }
                 if(o.lastShoot) {
                     bullet.damage *= switch(o.enrageTier) {
                         case 1 -> 30f;
@@ -65,24 +50,50 @@ public class BerserkerTurret extends NevixTurret {
                         case 3 -> 100f;
                         default -> 1f;
                     };
-                    if(o.health < o.maxHealth()) {
-                        o.heal(o.maxHealth() * 0.01f);
-                    }else{
-                        o.bloodShieldHealth += o.maxHealth() * 0.01f;
-                    }
+                }else if(o.inRage) {
+                    bullet.damage *= switch(o.enrageTier) {
+                        case 1 -> 1.5f;
+                        case 2 -> 2f;
+                        case 3 -> 2.5f;
+                        default -> 1f;
+                    };
+                }else if(o.hasShrapness) {
+                    bullet.damage *= 1.5f;
                 }
             }
             super.init(bullet);
         }
         
+        void onValidHit(Bullet bullet) {
+            if(!(bullet.owner instanceof BerserkerTurretBuild o) || !o.isValid()) return;
+
+            if(o.inRage || o.lastShoot) {
+                float pct = switch(o.enrageTier) {
+                    case 1 -> 0.005f;
+                    case 2 -> 0.0075f;
+                    case 3 -> 0.01f;
+                    default -> 0f;
+                };
+                o.restore(o.maxHealth() * pct);
+            }else if(o.hasBloodShield) {
+                o.restore(bullet.damage / 2f);
+            }
+        }
+
         @Override
         public void hitEntity(Bullet bullet, Hitboxc entity, float health) {
-            if(bullet.owner instanceof BerserkerTurretBuild owner) {
-                if(owner.hasBloodShield && !owner.inRage && !owner.lastShoot) {
-                    owner.bloodShieldHealth += bullet.damage / 2f;
-                }
+            if(entity instanceof Healthc h && !h.dead() && entity instanceof Teamc t && t.team() != bullet.team) {
+                onValidHit(bullet);
             }
             super.hitEntity(bullet, entity, health);
+        }
+
+        @Override
+        public void hitTile(Bullet b, Building build, float x, float y, float initialHealth, boolean direct) {
+            if(build != null && build.team != b.team && build.isValid()) {
+                onValidHit(b);
+            }
+            super.hitTile(b, build, x, y, initialHealth, direct);
         }
     }
     
@@ -175,7 +186,7 @@ public class BerserkerTurret extends NevixTurret {
         
         @Override
         public float maxHealth() {
-            maxHealth = (hasEndurance ? 2f * maxHealth : block.health);
+            maxHealth = (hasEndurance ? 2f * block.health : block.health);
             return maxHealth;
         }
         
@@ -191,16 +202,29 @@ public class BerserkerTurret extends NevixTurret {
             }
         }
         
+        public void restore(float amount) {
+            if(amount <= 0f) return;
+            
+            float missing = maxHealth() - this.health;
+            if(missing > 0f) {
+                float healed = Math.min(missing, amount);
+                heal(healed);
+                amount -= healed;
+            }
+            if(amount >= 0f) {
+                bloodShieldHealth += amount;
+            }
+        }
+        
         public void updateShield() {
             if(bloodShieldHealth <= 0f) return;
             
-            Groups.bullet.intersect(this.x, this.y, 80f, 80f).each(b -> {
-                float dx = b.x - this.x;
-                float dy = b.y - this.y;
-                if(dx * dx + dy * dy <= 40f * 40 && b.team != this.team) {
-                    b.remove();
+            Groups.bullet.intersect(this.x - 40f, this.y - 40f, 80f, 80f).each(b -> {
+                if(bloodShieldHealth <= 0f) return;
+                if(b.within(this, 40f)) {
                     bloodShieldHealth -= b.damage;
-                    if(bloodShieldHealth <= 0f) return;
+                    Fx.absorb.at(b.x, b.y);
+                    b.remove();
                 }
             });
         }
