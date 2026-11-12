@@ -1,12 +1,12 @@
 name: nevix
 displayName: Nevix
 
-description: "Inspired by: Newex"
+description: "Nevix—a mod inspired by Newex—introduces a turret system with a vast array of upgrade options, opening up an entirely new playstyle."
 subtile: ""
 
 author: "[#9B59D0[]]X[#B56BE8[]]e[#D86FEA[]]a[#FF69B4[]]n[[]]"
 
-version: "Beta: 0.1.1"
+version: "Beta: 0.1.1.2"
 minGameVersion: 160
 
 hidden: false
