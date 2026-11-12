@@ -152,13 +152,13 @@ public class BerserkerTurret extends NevixTurret {
         super.setBars();
         
         addBar("berserker-shoot-count-bar", build -> new Bar(
-        () -> Core.bundle.get("nevix-berserker-shoot-count") + ": " + ((BerserkerTurretBuild)build).shootCount,
+        () -> Core.bundle.get("bar.nevix-berserker-shoot-count") + ": " + ((BerserkerTurretBuild)build).shootCount,
         () -> Pal.accent,
         () -> 1f
         ));
         
         addBar("berserker-shield-health", build -> new Bar(
-        () -> Core.bundle.get("nevix-berserker-shield-health") + ": " + Math.max(0f, ((BerserkerTurretBuild)build).bloodShieldHealth),
+        () -> Core.bundle.get("bar.nevix-berserker-shield-health") + ": " + Math.max(0f, ((BerserkerTurretBuild)build).bloodShieldHealth),
         () -> Color.red,
         () -> 1f
         ));
