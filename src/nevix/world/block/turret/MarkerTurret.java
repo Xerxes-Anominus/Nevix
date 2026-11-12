@@ -179,7 +179,7 @@ public class MarkerTurret extends NevixTurret {
             
             Drawf.dashCircle(this.x, this.y, markRange(), Color.orange);
             
-            for(int i = 0; i < markedUnitList.size; i++) {
+            for(int i = 0; i < markedUnitList.size(); i++) {
                 Unit u = markedUnitList.get(i);
                 Drawf.circles(u.x, u.y, u.hitSize, Color.orange);
             }
