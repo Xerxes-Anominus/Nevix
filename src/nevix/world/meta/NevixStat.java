@@ -15,5 +15,7 @@ public class NevixStat {
     
     splashDamage = new Stat("splash-damage"),
     splashDamageRadius = new Stat("splash-damage-radius"),
-    bonusDamage = new Stat("bonus-damage");
+    bonusDamage = new Stat("bonus-damage"),
+    
+    pierce = new Stat("pierce");
 }
