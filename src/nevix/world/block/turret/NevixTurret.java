@@ -25,6 +25,7 @@ import mindustry.ui.Styles;
 import mindustry.ui.dialogs.BaseDialog;
 import mindustry.world.blocks.defense.turrets.ItemTurret;
 import mindustry.world.meta.Stat;
+import nevix.PromotionSys;
 import nevix.world.meta.NevixStat;
 
 import java.util.Arrays;
@@ -192,6 +193,24 @@ public class NevixTurret extends ItemTurret {
             return false;
         }
         
+        /** Các nâng cấp đã hoàn thành đang loại bỏ (conflict với) nâng cấp này, kể cả qua chuỗi level/yêu cầu. */
+        protected Seq<Upgrade> lockersOf(Upgrade up) {
+            Seq<Upgrade> out = new Seq<>();
+            collectLockers(up, out, 0);
+            return out;
+        }
+
+        private void collectLockers(Upgrade up, Seq<Upgrade> out, int depth) {
+            if (depth > upgrades.size) return;
+            for (Upgrade a : up.lockedBy) {
+                if (isDone(a)) out.addUnique(topLevel(a));
+            }
+            if (up.prevLevel != null && !isDone(up.prevLevel)) collectLockers(up.prevLevel, out, depth + 1);
+            for (Upgrade r : up.reqs) {
+                if (!isDone(r)) collectLockers(r, out, depth + 1);
+            }
+        }
+
         protected boolean requirementsMet(Upgrade up) {
             if (isLocked(up)) return false;
             if (up.prevLevel != null && !isDone(up.prevLevel)) return false;
@@ -561,7 +580,7 @@ public class NevixTurret extends ItemTurret {
         }
 
         protected Table borderedCard(Upgrade up) {
-            final Color border = isDone(up) ? Pal.heal : isLocked(up) ? Color.gray : Pal.accent;
+            final Color border = isDone(up) ? Pal.heal : Pal.accent;
             return new Table(Styles.black6) {
                 @Override
                 public void draw() {
@@ -600,27 +619,19 @@ public class NevixTurret extends ItemTurret {
             uTable.margin(12f);
 
             final boolean locked = isLocked(up);
-            if (locked) uTable.color.a = 0.6f;
 
-            uTable.add(up.name).color(locked ? Color.gray : Pal.accent).left().colspan(2).row();
+            uTable.add(up.name).color(Pal.accent).left().colspan(2).row();
 
             uTable.add(up.desc).color(Color.lightGray).left().colspan(2).wrap().width(cardW - 24f).padTop(4f).row();
 
             if (locked) {
-                Table lock = new Table();
-                lock.left();
-                lock.add(Core.bundle.get("upgrade.locked", "Locked:")).color(Color.scarlet).left().row();
-                boolean any = false;
-                for (Upgrade a : up.lockedBy) {
-                    if (!isDone(a)) continue;
-                    any = true;
-                    lock.add("- " + a.name).color(Color.scarlet).left().wrap().width(cardW - 24f).row();
+                Table conflict = new Table();
+                conflict.left();
+                conflict.add(Core.bundle.get("upgrade.conflict", "Conflict:")).color(Color.scarlet).left().row();
+                for (Upgrade a : lockersOf(up)) {
+                    conflict.add("- " + a.name).color(Color.scarlet).left().wrap().width(cardW - 24f).row();
                 }
-                if (!any) {
-                    lock.add("- " + Core.bundle.get("upgrade.locked-branch", "Branch is locked")).color(Color.scarlet)
-                        .left().wrap().width(cardW - 24f).row();
-                }
-                uTable.add(lock).left().colspan(2).padTop(6f).row();
+                uTable.add(conflict).left().colspan(2).padTop(6f).row();
             }
 
             Seq<Upgrade> conflicts = conflictsOf(up);
@@ -641,7 +652,7 @@ public class NevixTurret extends ItemTurret {
 
             addCostTable(uTable, up.cost, cardW - 24f);
 
-            uTable.button(Icon.up, Styles.clearNonei, () -> {
+            uTable.button(locked ? Icon.up.tint(Color.darkGray) : Icon.up, Styles.clearNonei, () -> {
                 if (!canBuy(id)) return;
                 if (preview) previewUpgrade(id);
                 else configure(id);
@@ -726,6 +737,7 @@ public class NevixTurret extends ItemTurret {
             for (Upgrade u = top; u != null; u = u.prevLevel) {
                 if (!isDone(u)) continue;
                 for (ItemStack s : u.cost) {
+                    if (s.item == PromotionSys.promotionStar) continue;
                     ItemStack found = total.find(t -> t.item == s.item);
                     if (found == null) total.add(new ItemStack(s.item, s.amount));
                     else found.amount += s.amount;
