@@ -545,7 +545,9 @@ public class NevixTurret extends ItemTurret {
             Table line = new Table();
             line.left();
             line.add(spaces + stat.localized() + (stat == NevixStat.none ? "" : ": ")).color(color);
-            line.add(value).color(Color.white);
+            line.add(Core.bundle.has("block." + block.name + ".custom-stat." + stat.name + (stat == NevixStat.none ? "." + value : ".value"))
+            ? Core.bundle.get("block." + block.name + ".custom-stat." + stat.name + (stat == NevixStat.none ? "." + value : ".value"))
+            : value).color(Color.white);
             bt.add(line).growX().left().row();
         }
         

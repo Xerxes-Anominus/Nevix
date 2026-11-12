@@ -182,7 +182,7 @@ public class SpinupTurret extends NevixTurret {
         protected void getStats(Table table) {
             addStat(table, NevixStat.generals, "", Pal.accent);
             addStat(table, Stat.health, "" + maxHealth());
-            addStat(table, Stat.range, "" + (range() / Vars.tilesize) + NevixStatUnit.get(NevixStatUnit.tile) + (ranger > 0 ? "[gray](+" + (rangerBoost() / 8f) + " " + NevixStatUnit.get(NevixStatUnit.tile) + "[[]]" : ""));
+            addStat(table, Stat.range, "" + (range() / Vars.tilesize) + NevixStatUnit.get(NevixStatUnit.tile) + (ranger > 0 ? "[gray](+" + rangerBoost() + " " + NevixStatUnit.get(NevixStatUnit.tile) + "" : ""));
             
             addStat(table, NevixStat.none, "");
             

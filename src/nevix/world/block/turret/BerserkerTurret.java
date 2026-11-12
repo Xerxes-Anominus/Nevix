@@ -20,6 +20,7 @@ import mindustry.entities.Effect;
 import mindustry.entities.Mover;
 import mindustry.entities.bullet.BulletType;
 import mindustry.entities.bullet.ShrapnelBulletType;
+import mindustry.entities.pattern.ShootPattern;
 import mindustry.entities.pattern.ShootSpread;
 import mindustry.gen.Building;
 import mindustry.gen.Bullet;
@@ -193,7 +194,7 @@ public class BerserkerTurret extends NevixTurret {
         public void getStats(Table table) {
             addStat(table, NevixStat.generals, "", Pal.accent);
             addStat(table, Stat.health, "" + maxHealth() + (hasEndurance ? " [gray](+100%)" : ""));
-            addStat(table, Stat.range, "" + range() + " " + NevixStatUnit.get(NevixStatUnit.tile));
+            addStat(table, Stat.range, "" + (range() / 8) + " " + NevixStatUnit.get(NevixStatUnit.tile));
             addStat(table, Stat.reload, "" + (reloaderTier == 1 ? "6.66666/" + NevixStatUnit.get(StatUnit.seconds) : (reloaderTier == 2 ? "10/" + NevixStatUnit.get(StatUnit.seconds) : "5/" + NevixStatUnit.get(StatUnit.seconds))));
             
             addStat(table, NevixStat.none, "");
@@ -299,7 +300,39 @@ public class BerserkerTurret extends NevixTurret {
         
         @Override
         protected void shoot(BulletType type) {
-            super.shoot(type);
+            float
+            bulletX = x + Angles.trnsx(rotation - 90, shootX, shootY),
+            bulletY = y + Angles.trnsy(rotation - 90, shootX, shootY);
+
+            if(shoot.firstShotDelay > 0){
+                chargeSound.at(bulletX, bulletY, Mathf.random(soundPitchMin, soundPitchMax));
+                type.chargeEffect.at(bulletX, bulletY, rotation);
+            }
+
+            ShootPattern pattern = type.shootPattern != null ? type.shootPattern : shoot;
+
+            pattern.shoot(barrelCounter, (xOffset, yOffset, angle, delay, mover) -> {
+                queuedBullets++;
+                int barrel = barrelCounter;
+
+                if(delay > 0f){
+                    Time.run(delay, () -> {
+                        int prev = barrelCounter;
+                        barrelCounter = barrel;
+                        bullet(type, xOffset, yOffset, angle, mover);
+                        barrelCounter = prev;
+                    });
+                }else{
+                    bullet(type, xOffset, yOffset, angle, mover);
+                }
+            }, () -> barrelCounter++);
+
+            if(consumeAmmoOnce){
+                if(!inRage && !lastShoot) {
+                    useAmmo();
+                }
+            }
+            
             if(!inRage) {
                 shootCount++;
             }
@@ -344,7 +377,7 @@ public class BerserkerTurret extends NevixTurret {
             totalShots++;
 
             if(!consumeAmmoOnce){
-                if(!inRage) {
+                if(!inRage && !lastShoot) {
                     useAmmo();
                 }
             }
