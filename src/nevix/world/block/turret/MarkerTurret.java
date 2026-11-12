@@ -74,6 +74,8 @@ public class MarkerTurret extends NevixTurret {
         reload = 600f;
         
         ammoTypes.put(Items.pyratite, new MarkerBulletType());
+        
+        upgradeBranch();
     }
 
     public static Upgrade
