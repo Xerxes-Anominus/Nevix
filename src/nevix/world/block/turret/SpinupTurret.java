@@ -182,7 +182,7 @@ public class SpinupTurret extends NevixTurret {
         protected void getStats(Table table) {
             addStat(table, NevixStat.generals, "", Pal.accent);
             addStat(table, Stat.health, "" + maxHealth());
-            addStat(table, Stat.range, "" + (range() / Vars.tilesize) + NevixStatUnit.get(NevixStatUnit.tile) + (ranger > 0 ? "[gray](+" + rangerBoost() + " " + NevixStatUnit.get(NevixStatUnit.tile) + "" : ""));
+            addStat(table, Stat.range, "" + (range() / Vars.tilesize) + NevixStatUnit.get(NevixStatUnit.tile) + (ranger > 0 ? "[gray](+" + rangerBoost() + " " + NevixStatUnit.get(NevixStatUnit.tile) + ")" : ""));
             
             addStat(table, NevixStat.none, "");
             
@@ -219,9 +219,9 @@ public class SpinupTurret extends NevixTurret {
             
             if(hasteTier > 0) {
                 addBulletStatTable(table, bt -> {
-                    if (hasteTier == 1) addBulletStat(table, NevixStat.none, "haste1");
-                    if (hasteTier == 2) addBulletStat(table, NevixStat.none, "haste2");
-                    if (hasteTier == 3) addBulletStat(table, NevixStat.none, "haste3");
+                    if (hasteTier == 1) addBulletStat(bt, NevixStat.none, "haste1");
+                    if (hasteTier == 2) addBulletStat(bt, NevixStat.none, "haste2");
+                    if (hasteTier == 3) addBulletStat(bt, NevixStat.none, "haste3");
                 });
             }
         }

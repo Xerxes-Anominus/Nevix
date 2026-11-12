@@ -172,7 +172,7 @@ public class NevixTurret extends ItemTurret {
         }
         
         protected boolean isVisible(Upgrade up) {
-            if (isDone(up) || isLocked(up)) return false;
+            if (isDone(up)) return false;
             return up.prevLevel == null || isDone(up.prevLevel);
         }
         
@@ -193,6 +193,7 @@ public class NevixTurret extends ItemTurret {
         }
         
         protected boolean requirementsMet(Upgrade up) {
+            if (isLocked(up)) return false;
             if (up.prevLevel != null && !isDone(up.prevLevel)) return false;
             for (Upgrade r : up.reqs) {
                 if (!isDone(r)) return false;
@@ -268,7 +269,7 @@ public class NevixTurret extends ItemTurret {
         protected void requestUpgrade(int id) {
             if (Vars.net.client()) return;
             if (id < 0 || id >= upgrades.size) return;
-            if (!canBuy(id)) return;
+            if (isLocked(upgrades.get(id)) || !canBuy(id)) return;
 
             payCost(upgrades.get(id).cost);
             sendConfirm(id, CONFIRM_BUY);
@@ -560,7 +561,7 @@ public class NevixTurret extends ItemTurret {
         }
 
         protected Table borderedCard(Upgrade up) {
-            final Color border = isDone(up) ? Pal.heal : Pal.accent;
+            final Color border = isDone(up) ? Pal.heal : isLocked(up) ? Color.gray : Pal.accent;
             return new Table(Styles.black6) {
                 @Override
                 public void draw() {
@@ -598,9 +599,29 @@ public class NevixTurret extends ItemTurret {
             Table uTable = borderedCard(up);
             uTable.margin(12f);
 
-            uTable.add(up.name).color(Pal.accent).left().colspan(2).row();
+            final boolean locked = isLocked(up);
+            if (locked) uTable.color.a = 0.6f;
+
+            uTable.add(up.name).color(locked ? Color.gray : Pal.accent).left().colspan(2).row();
 
             uTable.add(up.desc).color(Color.lightGray).left().colspan(2).wrap().width(cardW - 24f).padTop(4f).row();
+
+            if (locked) {
+                Table lock = new Table();
+                lock.left();
+                lock.add(Core.bundle.get("upgrade.locked", "Locked:")).color(Color.scarlet).left().row();
+                boolean any = false;
+                for (Upgrade a : up.lockedBy) {
+                    if (!isDone(a)) continue;
+                    any = true;
+                    lock.add("- " + a.name).color(Color.scarlet).left().wrap().width(cardW - 24f).row();
+                }
+                if (!any) {
+                    lock.add("- " + Core.bundle.get("upgrade.locked-branch", "Branch is locked")).color(Color.scarlet)
+                        .left().wrap().width(cardW - 24f).row();
+                }
+                uTable.add(lock).left().colspan(2).padTop(6f).row();
+            }
 
             Seq<Upgrade> conflicts = conflictsOf(up);
             if (up.reqs.size > 0 || conflicts.size > 0) {
@@ -625,7 +646,7 @@ public class NevixTurret extends ItemTurret {
                 if (preview) previewUpgrade(id);
                 else configure(id);
             }).size(48f).colspan(2).right().padTop(4f)
-              .disabled(b -> !canBuy(id));
+              .disabled(b -> isLocked(up) || !canBuy(id));
 
             table.add(uTable).width(cardW).minHeight(150f).top().pad(5f);
         }
