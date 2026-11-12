@@ -34,6 +34,8 @@ public final class Turrets {
         
         berserker = new BerserkerTurret("berserker") {{
             requirements(Category.turret, ItemStack.with(Items.titanium, 300, Items.thorium, 100, Items.graphite, 850, Items.metaglass, 500));
+            
+            drawer = new DrawTurret("reinforced-");
         }};
         
         marker = new MarkerTurret("marker") {{
