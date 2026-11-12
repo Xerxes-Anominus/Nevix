@@ -211,7 +211,7 @@ public class MarkerTurret extends NevixTurret {
             
             Groups.unit.each(u -> {
                 if(!markedUnitList.contains(u)) {
-                    if(Mathf.dst(this.x, this.y, u.x, u.y) <= markRange() * markRange() && u.team != this.team) {
+                    if(Mathf.dst(this.x, this.y, u.x, u.y) <= markRange() && u.team != this.team) {
                         markedUnitList.add(u);
                     }
                 }
@@ -234,7 +234,7 @@ public class MarkerTurret extends NevixTurret {
             for(int i = markedUnitList.size() - 1; i >= 0; i--) {
                 Unit u = markedUnitList.get(i);
                 if(u.dead()) {
-                    Damage.damage(this.team, u.x, u.y, markDamage(), 40f);
+                    Damage.damage(this.team, u.x, u.y, 40f, markDamage());
                     markEffect.at(u.x, u.y);
                     markedUnitList.remove(i);
                 }
