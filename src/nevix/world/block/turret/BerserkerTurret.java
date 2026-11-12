@@ -205,61 +205,49 @@ public class BerserkerTurret extends NevixTurret {
         public void getStats(Table table) {
             addStat(table, NevixStat.generals, "", Pal.accent);
             addStat(table, Stat.health, "" + maxHealth() + (hasEndurance ? " [gray](+100%)" : ""));
-            addStat(table, Stat.range, "" + (range() / 8) + " " + NevixStatUnit.get(NevixStatUnit.tile));
-            addStat(table, Stat.reload, "" + (reloaderTier == 1 ? "6.66666/" + NevixStatUnit.get(StatUnit.seconds) : (reloaderTier == 2 ? "10/" + NevixStatUnit.get(StatUnit.seconds) : "5/" + NevixStatUnit.get(StatUnit.seconds))));
-            
+
+            float threshold = reload * (1f - reloaderTier * 0.25f);
+            addStat(table, Stat.reload, "" + (Mathf.round(threshold / 60f * 100f) / 100f) + " " + NevixStatUnit.get(StatUnit.seconds)
+            + (reloaderTier > 0 ? " [gray](-" + (reloaderTier == 1 ? "25" : "50") + "%)" : ""));
+
+            addStat(table, Stat.range, "" + (range() / Vars.tilesize) + " " + NevixStatUnit.get(NevixStatUnit.tile));
+
             addStat(table, NevixStat.none, "");
-            
+
             addStat(table, NevixStat.ammo, "", Pal.accent);
             if(peekAmmo() != null) {
                 addBulletStatTable(table, bt -> {
-                    addBulletStat(bt, Stat.damage, "" + peekAmmo().damage, 1);
-                    addBulletStat(bt, NevixStat.pierce, "True", 1);
+                    addBulletStat(bt, Stat.damage, "" + peekAmmo().damage + (hasShrapness ? " [gray](+50%)" : ""));
+                    addBulletStat(bt, NevixStat.pierce, "True");
                 });
             }
-            
+
+            addStat(table, NevixStat.none, "");
+
             addStat(table, NevixStat.special, "", Pal.accent);
-            if(hasShrapness) {
-                addBulletStatTable(table, bt -> {
-                    addBulletStat(bt, NevixStat.none, "hasShrapness");
-                });
-            }
-            if(hasEndurance) {
-                addBulletStatTable(table, bt -> {
-                    addBulletStat(bt, NevixStat.none, "hasEndurance");
-                });
-            }
             
-            if(reloaderTier == 1) {
+            if (hasBloodShield) {
                 addBulletStatTable(table, bt -> {
-                    addBulletStat(bt, NevixStat.none, "reloader1");
+                    addBulletStat(bt, NevixStat.lifesteal, "50%");
+                    addBulletStat(bt, NevixStat.shieldCap, "Unlimited");
+                    addBulletStat(bt, NevixStat.none, "berserkerBloodShield");
                 });
             }
-            if(reloaderTier == 2) {
+
+            if (enrageTier > 0) {
+                int thresholdShots = enrageTier == 1 ? 50 : enrageTier == 2 ? 40 : 30;
+                int duration = enrageTier == 1 ? 1 : enrageTier == 2 ? 2 : 3;
+                int dmg = enrageTier == 1 ? 50 : enrageTier == 2 ? 100 : 150;
+                String heal = enrageTier == 1 ? "0.5%" : enrageTier == 2 ? "0.75%" : "1.0%";
+                int charge = enrageTier == 1 ? 3000 : enrageTier == 2 ? 5000 : 10000;
+
                 addBulletStatTable(table, bt -> {
-                    addBulletStat(bt, NevixStat.none, "reloader2");
-                });
-            }
-            
-            if(hasBloodShield) {
-                addBulletStatTable(table, bt -> {
-                    addBulletStat(bt, NevixStat.none, "hasBloodShield");
-                });
-            }
-            
-            if(enrageTier == 1) {
-                addBulletStatTable(table, bt -> {
-                    addBulletStat(bt, NevixStat.none, "enrage1");
-                });
-            }
-            if(enrageTier == 2) {
-                addBulletStatTable(table, bt -> {
-                    addBulletStat(bt, NevixStat.none, "enrage2");
-                });
-            }
-            if(enrageTier == 3) {
-                addBulletStatTable(table, bt -> {
-                    addBulletStat(bt, NevixStat.none, "enrage3");
+                    addBulletStat(bt, NevixStat.rageThreshold, "" + thresholdShots);
+                    addBulletStat(bt, NevixStat.rageDuration, "" + duration + "s");
+                    addBulletStat(bt, NevixStat.rageDamage, "+" + dmg + "%");
+                    addBulletStat(bt, NevixStat.rageHeal, heal + " " + NevixStatUnit.get(NevixStatUnit.maxHealth));
+                    addBulletStat(bt, NevixStat.chargeShotDamage, charge + "%");
+                    addBulletStat(bt, NevixStat.none, "berserkerRage");
                 });
             }
         }
@@ -274,7 +262,7 @@ public class BerserkerTurret extends NevixTurret {
         public void updateShooting() {
             if(inRage) return;
             
-            float threshold = reload - reload * (reloaderTier == 0 ? 0f : (reloaderTier == 1 ? 0.25f : 0.5f));
+            float threshold = reload / (1f - reloaderTier * 0.25f);
             if (reloadCounter >= threshold && !charging() && shootWarmup >= minWarmup) {
                 BulletType type = peekAmmo();
                 shoot(type);

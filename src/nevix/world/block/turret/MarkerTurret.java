@@ -3,12 +3,14 @@ package nevix.world.block.turret;
 import java.util.ArrayList;
 import java.util.List;
 
+import arc.Core;
 import arc.graphics.Color;
 import arc.math.Mathf;
 import arc.scene.ui.layout.Table;
 import arc.util.Time;
 import arc.util.io.Reads;
 import arc.util.io.Writes;
+import mindustry.Vars;
 import mindustry.content.Fx;
 import mindustry.content.Items;
 import mindustry.entities.Damage;
@@ -18,7 +20,12 @@ import mindustry.gen.Bullet;
 import mindustry.gen.Groups;
 import mindustry.gen.Hitboxc;
 import mindustry.gen.Unit;
+import mindustry.graphics.Drawf;
+import mindustry.graphics.Pal;
 import mindustry.type.ItemStack;
+import mindustry.ui.Bar;
+import mindustry.world.meta.Stat;
+import nevix.world.meta.NevixStat;
 
 public class MarkerTurret extends NevixTurret {
     public class MarkerBulletType extends BasicBulletType {
@@ -30,10 +37,10 @@ public class MarkerTurret extends NevixTurret {
             frontColor = Color.white;
             backColor = Color.orange;
             trailColor = Color.orange;
-            width = 9f;
-            height = 9f;
-            trailWidth = 9f / 5;
-            trailLength = 18;
+            width = 15;
+            height = 15f;
+            trailWidth = 3f;
+            trailLength = 30;
             homingRange = 40f;
             homingPower = 0.01f;
             homingDelay = 30f;
@@ -61,10 +68,14 @@ public class MarkerTurret extends NevixTurret {
         range = 80f;
         reload = 70f;
         
+        inaccuracy = 10f;
+        
         shoot.shots = 2;
-        shoot.shotDelay = 15f;
+        shoot.shotDelay = 5f;
         
         ammoTypes.put(Items.pyratite, new MarkerBulletType());
+        
+        upgradeBranch();
     }
     
     public static Upgrade
@@ -105,6 +116,24 @@ public class MarkerTurret extends NevixTurret {
     
     public Effect markEffect = Fx.explosion;
     
+    @Override
+    public void setBars() {
+        super.setBars();
+        
+        addBar("mark-time", build -> new Bar(
+        () -> Core.bundle.get("bar.nevix-marker.mark-time"),
+        () -> Pal.accent,
+        () -> ((MarkerTurretBuild)build).markTimer / ((MarkerTurretBuild)build).markTime()
+        ));
+    }
+    
+    @Override
+    public void drawPlace(int x, int y, int rotation, boolean valid) {
+        super.drawPlace(x, y, rotation, valid);
+        
+        Drawf.dashCircle(x * Vars.tilesize, y * Vars.tilesize, 160f, Color.orange);
+    }
+    
     public class MarkerTurretBuild extends NevixTurretBuild {
         public int
         MarkTier, RangeTier,
@@ -116,7 +145,37 @@ public class MarkerTurret extends NevixTurret {
         
         @Override
         public void getStats(Table table) {
+            addStat(table, NevixStat.generals, "", Pal.accent);
+            addStat(table, Stat.health, "" + this.maxHealth());
+            addStat(table, Stat.range, "" + (range() / Vars.tilesize) + " " + NevixStatUnit.get(NevixStatUnit.tile));
+            addStat(table, Stat.reload, "" + (Mathf.round(reload / 60f * 100f) / 100f) + " " + NevixStatUnit.get(StatUnit.seconds));
+
+            addStat(table, NevixStat.none, "");
+
+            addStat(table, NevixStat.ammo, "", Pal.accent);
+            if(peekAmmo() != null) {
+                addBulletStatTable(table, bt -> {
+                    addBulletStat(bt, Stat.damage, "" + peekAmmo().damage);
+                });
+            }
+
+            addStat(table, NevixStat.none, "");
+
+            addStat(table, NevixStat.special, "", Pal.accent);
+            addBulletStatTable(table, bt -> {
+                addBulletStat(bt, NevixStat.markDamage, "" + markDamage());
+                addBulletStat(bt, NevixStat.markRange, "" + (markRange() / Vars.tilesize) + " " + NevixStatUnit.get(NevixStatUnit.tile));
+                addBulletStat(bt, NevixStat.markInterval, "" + Mathf.round(markTime() / 60f * 10f) / 10f + " " + NevixStatUnit.get(StatUnit.seconds));
+                addBulletStat(bt, NevixStat.markSplash, "" + (40f / Vars.tilesize) + " " + NevixStatUnit.get(NevixStatUnit.tile));
+                addBulletStat(bt, NevixStat.none, "markMechanic");
+            });
+        }
+        
+        @Override
+        public void drawSelect() {
+            super.drawSelect();
             
+            Drawf.dashCircle(this.x, this.y, markRange(), Color.orange);
         }
         
         @Override
@@ -129,7 +188,7 @@ public class MarkerTurret extends NevixTurret {
         }
         
         public float markTime() {
-            return MarkTime[MarkRangeTier];
+            return MarkTime[MarkTimeTier];
         }
         
         public float markDamage() {

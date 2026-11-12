@@ -182,46 +182,48 @@ public class SpinupTurret extends NevixTurret {
         protected void getStats(Table table) {
             addStat(table, NevixStat.generals, "", Pal.accent);
             addStat(table, Stat.health, "" + maxHealth());
-            addStat(table, Stat.range, "" + (range() / Vars.tilesize) + NevixStatUnit.get(NevixStatUnit.tile) + (ranger > 0 ? "[gray](+" + rangerBoost() + " " + NevixStatUnit.get(NevixStatUnit.tile) + ")" : ""));
-            
+            addStat(table, Stat.range, "" + (range() / Vars.tilesize) + " " + NevixStatUnit.get(NevixStatUnit.tile)
+            + (ranger > 0 ? " [gray](+" + rangerBoost() + ")" : ""));
+            addStat(table, Stat.reload, "" + (Mathf.round(reload / 60f * 100f) / 100f) + " " + NevixStatUnit.get(StatUnit.seconds));
+
             addStat(table, NevixStat.none, "");
-            
+
             addStat(table, NevixStat.ammo, "", Pal.accent);
             if(peekAmmo() != null) {
                 addBulletStatTable(table, bt -> {
                     addBulletStat(bt, Stat.damage, "" + peekAmmo().damage);
                     if(peekAmmo().fragBullets > 0 && peekAmmo().fragBullet != null) {
-                        addStat(table, NevixStat.fragBullets, "" + peekAmmo().fragBullets);
-                        addStat(table, NevixStat.fragBullet, "");
+                        addBulletStat(bt, NevixStat.fragBullets, "" + peekAmmo().fragBullets);
                         addBulletStat(bt, Stat.damage, "" + peekAmmo().fragBullet.damage, 1);
                     }
                 });
             }
-            
+
             addStat(table, NevixStat.none, "");
-            
+
             addStat(table, NevixStat.special, "", Pal.accent);
-            if(multiShot) {
+
+            if (hasteTier > 0) {
+                int maxBonus = getMax() * 10;
                 addBulletStatTable(table, bt -> {
-                    addBulletStat(bt, NevixStat.none, "multiShot");
+                    addBulletStat(bt, NevixStat.attackSpeed, "+10%");
+                    addBulletStat(bt, NevixStat.attackSpeedMax, "+" + maxBonus + "%");
+                    addBulletStat(bt, NevixStat.none, "spinupHasteStack");
                 });
             }
-            if(explosiveBullet) {
+            if (multiShot) {
                 addBulletStatTable(table, bt -> {
-                    addBulletStat(bt, NevixStat.none, "expBullet");
+                    addBulletStat(bt, NevixStat.multiShotChance, "40%");
                 });
             }
-            if(percentBullet) {
+            if (explosiveBullet) {
                 addBulletStatTable(table, bt -> {
-                    addBulletStat(bt, NevixStat.none, "perBullet");
+                    addBulletStat(bt, NevixStat.splashDamageBonus, "+300%");
                 });
             }
-            
-            if(hasteTier > 0) {
+            if (percentBullet) {
                 addBulletStatTable(table, bt -> {
-                    if (hasteTier == 1) addBulletStat(bt, NevixStat.none, "haste1");
-                    if (hasteTier == 2) addBulletStat(bt, NevixStat.none, "haste2");
-                    if (hasteTier == 3) addBulletStat(bt, NevixStat.none, "haste3");
+                    addBulletStat(bt, NevixStat.trueDamage, "0.5% " + NevixStatUnit.get(NevixStatUnit.maxHealth));
                 });
             }
         }

@@ -193,7 +193,6 @@ public class NevixTurret extends ItemTurret {
             return false;
         }
         
-        /** Các nâng cấp đã hoàn thành đang loại bỏ (conflict với) nâng cấp này, kể cả qua chuỗi level/yêu cầu. */
         protected Seq<Upgrade> lockersOf(Upgrade up) {
             Seq<Upgrade> out = new Seq<>();
             collectLockers(up, out, 0);
