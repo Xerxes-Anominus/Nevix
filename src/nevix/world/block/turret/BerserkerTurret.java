@@ -262,7 +262,7 @@ public class BerserkerTurret extends NevixTurret {
         public void updateShooting() {
             if(inRage) return;
             
-            float threshold = reload / (1f - reloaderTier * 0.25f);
+            float threshold = reload - reload * 0.25f * reloaderTier;
             if (reloadCounter >= threshold && !charging() && shootWarmup >= minWarmup) {
                 BulletType type = peekAmmo();
                 shoot(type);

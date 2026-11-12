@@ -35,7 +35,7 @@ public class MarkerTurret extends NevixTurret {
             super();
             damage = 98.5f;
             speed = 5f;
-            scaleLife = true;
+            lifetime = 48f;
             frontColor = Color.white;
             backColor = Color.orange;
             trailColor = Color.orange;
@@ -178,6 +178,11 @@ public class MarkerTurret extends NevixTurret {
             super.drawSelect();
             
             Drawf.dashCircle(this.x, this.y, markRange(), Color.orange);
+            
+            for(int i = 0; i < markedUnitList.size; i++) {
+                Unit u = markedUnitList.get(i);
+                Drawf.circles(u.x, u.y, u.hitSize, Color.orange);
+            }
         }
         
         @Override
@@ -198,6 +203,8 @@ public class MarkerTurret extends NevixTurret {
         }
         
         public void updateMark() {
+            if(!hasAmmo()) return;
+            
             markTimer += Time.delta;
             if(markTimer < markTime()) return;
             markTimer -= markTime();
@@ -209,6 +216,8 @@ public class MarkerTurret extends NevixTurret {
                     }
                 }
             });
+            
+            useAmmo();
         }
         
         public void addMark(Unit u) {
