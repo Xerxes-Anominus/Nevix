@@ -175,6 +175,10 @@ public class BerserkerTurret extends NevixTurret {
         toColor = Items.blastCompound.color;
     }};
     
+    public static final float SHIELD_FADE_TIME = 60f;
+    public static final float SHIELD_IDLE_FILL = 0.06f, SHIELD_IDLE_LINE = 0.25f;
+    public static final float SHIELD_HIT_FILL = 0.5f;
+    
     public class BerserkerTurretBuild extends NevixTurretBuild {
         public boolean hasShrapness;
         public boolean hasEndurance;
@@ -183,6 +187,7 @@ public class BerserkerTurret extends NevixTurret {
         public int enrageTier;
         
         public float bloodShieldHealth;
+        public float shieldHit;
         
         public boolean inRage;
         public boolean lastShoot;
@@ -285,6 +290,14 @@ public class BerserkerTurret extends NevixTurret {
             }
         }
         
+        public void healing() {
+            if(health >= maxHealth()) return;
+            
+            float missing = maxHealth() - health;
+            heal(missing);
+            bloodShieldHealth -= missing;
+        }
+        
         public void updateShield() {
             if(bloodShieldHealth <= 0f) return;
             
@@ -292,6 +305,7 @@ public class BerserkerTurret extends NevixTurret {
                 if(bloodShieldHealth <= 0f) return;
                 if(b.within(this, 40f) && b.team != this.team) {
                     bloodShieldHealth -= b.damage;
+                    shieldHit = 1f;
                     Fx.absorb.at(b.x, b.y);
                     b.remove();
                 }
@@ -420,6 +434,8 @@ public class BerserkerTurret extends NevixTurret {
                 bloodShieldHealth = 0f;
             }
             updateShield();
+            shieldHit = Math.max(0f, shieldHit - Time.delta / SHIELD_FADE_TIME);
+            healing();
             updateRage();
             super.updateTile();
         }
@@ -428,23 +444,26 @@ public class BerserkerTurret extends NevixTurret {
         public void draw() {
             super.draw();
             
-            if(bloodShieldHealth > 0f) {
-                Draw.color(Color.valueOf("ff000080"));
-                Draw.z(Layer.effect);
-                
-                Fill.circle(this.x, this.y, 40f);
-                
-                Draw.color(Color.red);
-                Draw.blend(Blending.normal);
-                Draw.z(Layer.effect + 0.1f);
-                
-                float id = this.y * Vars.world.width() - this.x;
-                Lines.stroke(2f);
-                Lines.arc(this.x, this.y, 38f, 1f / 6, (Time.time + id) % 360f);
-                Lines.arc(this.x, this.y, 40f, 1f / 4, (120f + Time.time - id) % 360f);
-                Lines.arc(this.x, this.y, 42f, 1f / 5, (150f - Time.time + id) % 360f);
-                Draw.reset();
-            }
+            boolean active = bloodShieldHealth > 0f;
+            if(!active && shieldHit <= 0f) return;
+            
+            float fillAlpha = Mathf.lerp(active ? SHIELD_IDLE_FILL : 0f, SHIELD_HIT_FILL, shieldHit);
+            float lineAlpha = Mathf.lerp(active ? SHIELD_IDLE_LINE : 0f, 1f, shieldHit);
+            
+            Draw.z(Layer.effect);
+            Draw.color(Color.red, fillAlpha);
+            Fill.circle(this.x, this.y, 40f);
+            
+            Draw.blend(Blending.normal);
+            Draw.z(Layer.effect + 0.1f);
+            Draw.color(Color.red, lineAlpha);
+            
+            float id = this.y * Vars.world.width() - this.x;
+            Lines.stroke(2f);
+            Lines.arc(this.x, this.y, 38f, 1f / 6, (Time.time + id) % 360f);
+            Lines.arc(this.x, this.y, 40f, 1f / 4, (120f + Time.time - id) % 360f);
+            Lines.arc(this.x, this.y, 42f, 1f / 5, (150f - Time.time + id) % 360f);
+            Draw.reset();
         }
         
         @Override

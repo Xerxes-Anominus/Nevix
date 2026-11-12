@@ -514,11 +514,11 @@ public class NevixTurret extends ItemTurret {
         
         protected void addStat(Table table, Stat stat, String value, Color color) {
             Table line = new Table();
-            line.left();
-            line.add(stat.localized() + (stat == NevixStat.none ? "" : ": ")).color(color).left();
+            line.left().top();
+            line.add(stat.localized() + (stat == NevixStat.none ? "" : ": ")).color(color).left().top();
             line.add(Core.bundle.has("block." + block.name + ".custom-stat." + stat.name + (stat == NevixStat.none ? "." + value : ".value"))
             ? Core.bundle.get("block." + block.name + ".custom-stat." + stat.name + (stat == NevixStat.none ? "." + value : ".value"))
-            : value).color(Color.white).left().padLeft(5f);
+            : value).color(Color.white).left().top().padLeft(5f).growX().wrap();
             table.add(line).growX().left().row();
         }
         
@@ -543,11 +543,11 @@ public class NevixTurret extends ItemTurret {
             }
             
             Table line = new Table();
-            line.left();
-            line.add(spaces + stat.localized() + (stat == NevixStat.none ? "" : ": ")).color(color);
+            line.left().top();
+            line.add(spaces + stat.localized() + (stat == NevixStat.none ? "" : ": ")).color(color).left().top();
             line.add(Core.bundle.has("block." + block.name + ".custom-stat." + stat.name + (stat == NevixStat.none ? "." + value : ".value"))
             ? Core.bundle.get("block." + block.name + ".custom-stat." + stat.name + (stat == NevixStat.none ? "." + value : ".value"))
-            : value).color(Color.white);
+            : value).color(Color.white).left().top().growX().wrap();
             bt.add(line).growX().left().row();
         }
         
