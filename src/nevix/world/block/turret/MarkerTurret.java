@@ -7,6 +7,7 @@ import arc.Core;
 import arc.graphics.Color;
 import arc.math.Mathf;
 import arc.scene.ui.layout.Table;
+import arc.struct.IntSeq;
 import arc.util.Time;
 import arc.util.io.Reads;
 import arc.util.io.Writes;
@@ -144,6 +145,7 @@ public class MarkerTurret extends NevixTurret {
         public float markTimer, activeTimer;
         
         public List<Unit> markedUnitList = new ArrayList<>();
+        public IntSeq pendingIds = new IntSeq();
         
         @Override
         public void getStats(Table table) {
@@ -181,6 +183,10 @@ public class MarkerTurret extends NevixTurret {
             
             for(int i = 0; i < markedUnitList.size(); i++) {
                 Unit u = markedUnitList.get(i);
+                if(u == null || !u.isAdded()) {
+                    markedUnitList.remove(i);
+                    continue;
+                }
                 Drawf.circles(u.x, u.y, u.hitSize, Color.orange);
             }
         }
@@ -233,6 +239,11 @@ public class MarkerTurret extends NevixTurret {
             
             for(int i = markedUnitList.size() - 1; i >= 0; i--) {
                 Unit u = markedUnitList.get(i);
+                if(u == null || !u.isAdded()) {
+                    markedUnitList.remove(i);
+                    continue;
+                }
+                
                 if(u.dead()) {
                     Damage.damage(this.team, u.x, u.y, 40f, markDamage());
                     markEffect.at(u.x, u.y);
@@ -243,6 +254,7 @@ public class MarkerTurret extends NevixTurret {
         
         @Override
         public void updateTile() {
+            resolvePending();
             updateMark();
             activeMark();
             super.updateTile();
@@ -275,9 +287,17 @@ public class MarkerTurret extends NevixTurret {
             markedUnitList.clear();
             int size = r.i();
             for(int i = 0; i < size; i++) {
-                Unit u = Groups.unit.getByID(r.i());
-                markedUnitList.add(u);
+                pendingIds.add(r.i());
             }
+        }
+        
+        public void resolvePending() {
+            if(pendingIds.isEmpty()) return;
+            for(int i = 0; i < pendingIds.size; i++){
+                Unit u = Groups.unit.getByID(pendingIds.get(i));
+                if(u != null) markedUnitList.add(u);
+            }
+            pendingIds.clear();
         }
     }
 }
