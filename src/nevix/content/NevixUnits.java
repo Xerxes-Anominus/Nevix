@@ -1,8 +1,10 @@
 package nevix.content;
 
 import mindustry.content.Blocks;
+import mindustry.content.Fx;
 import mindustry.entities.bullet.BasicBulletType;
 import mindustry.gen.LegsUnit;
+import mindustry.gen.Sounds;
 import mindustry.type.UnitType;
 import mindustry.type.Weapon;
 import nevix.ai.ReactoryAI;
@@ -29,7 +31,7 @@ public class NevixUnits {
             drawCell = false;
             
             weapons.add(new Weapon("super-gun") {{
-                reload = 30f;
+                reload = 45f;
                 
                 mirror = false;
                 x = 0f;
@@ -37,13 +39,13 @@ public class NevixUnits {
                 
                 alwaysShooting = true;
                 
-                shootSound = Blocks.thoriumReactor.destroySound;
+                shootSound = Sounds.explosionReactor;
                 
                 bullet = new BasicBulletType() {{
                     damage = 0f;
                     speed = 0f;
                     lifetime = 0f;
-                    shootEffect = Blocks.thoriumReactor.destroyEffect;
+                    shootEffect = Fx.reactorExplosion;
                     splashDamage = 5000f;
                     splashDamageRadius = 80f;
                 }};
