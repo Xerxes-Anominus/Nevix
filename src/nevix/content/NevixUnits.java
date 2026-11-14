@@ -1,6 +1,7 @@
 package nevix.content;
 
 import mindustry.content.Blocks;
+import mindustry.entities.bullet.BasicBulletType;
 import mindustry.gen.LegsUnit;
 import mindustry.type.UnitType;
 import mindustry.type.Weapon;
@@ -38,8 +39,14 @@ public class NevixUnits {
                 
                 shootSound = Blocks.thoriumReactor.destroySound;
                 
-                bullet = Blocks.thoriumReactor.destroyBullet;
-                bullet.shootEffect = Blocks.thoriumReactor.destroyEffect;
+                bullet = new BasicBulletType() {{
+                    damage = 0f;
+                    speed = 0f;
+                    lifetime = 0f;
+                    shootEffect = Blocks.thoriumReactor.destroyEffect;
+                    splashDamage = 5000f;
+                    splashDamageRadius = 80f;
+                }};
             }});
         }};
     }
