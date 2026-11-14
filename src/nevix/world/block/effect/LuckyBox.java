@@ -165,24 +165,22 @@ public class LuckyBox extends Block {
             openEffect.at(x, y);
         }
 
+        
         @Override
         public void updateTile() {
-            if (!opened) return;
+            if (!opened || done) return;
 
             lid = Mathf.approachDelta(lid, 1f, 1f / openTime);
 
-            if (lid >= 1f && !done) {
+            if (lid >= 1f) {
                 done = true;
+
                 if (!net.client()) {
-                    final Tile origin = tile;
-                    Core.app.post(() -> {
-                        if (origin.build != this) return;
-                        try {
-                            giveReward();
-                        } catch (Throwable e) {
-                            Log.err("LuckyBox: failed to give reward", e);
-                        }
-                    });
+                    try {
+                        giveReward();
+                    } catch (Throwable e) {
+                        Log.err("LuckyBox: failed to give reward", e);
+                    }
                 }
             }
         }
