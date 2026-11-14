@@ -32,15 +32,15 @@ public class PromotionSys {
         });
         
         
-        Events.run(Trigger.update, () -> {
-            promotionStar.color = Color.HSVtoRGB(Time.time % 360, 0.85f, 1f);
-        });
-        
         Events.on(ClientLoadEvent.class, event -> {
             Vars.content.blocks().each(b -> {
                 if(b instanceof Sorter sorter) {
                     sorter.drawDynamic = true;
                 }
+            });
+            
+            Events.run(Trigger.update, () -> {
+                promotionStar.color = Color.HSVtoRGB(Time.time % 360, 0.85f, 1f);
             });
         });
     }
