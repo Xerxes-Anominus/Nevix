@@ -17,8 +17,7 @@ public class PromotionSys {
     public static Item promotionStar;
     
     public static void load() {
-        promotionStar = new Item("promotion-star") {{
-        }};
+        promotionStar = new Item("promotion-star");
     }
     
     public static void init() {
@@ -27,7 +26,7 @@ public class PromotionSys {
             Bullet b = event.bullet;
             if(!u.dead()) return;
             if(u.team == b.team) return;
-            if(Mathf.random(1f) > 0.09f) return;
+            if(Mathf.chance(0.1f)) return;
             b.team.core().items.add(promotionStar, Mathf.random(0, 3));
         });
         
@@ -40,7 +39,7 @@ public class PromotionSys {
             });
             
             Events.run(Trigger.update, () -> {
-                promotionStar.color = Color.HSVtoRGB(Time.time % 360, 0.85f, 1f);
+                promotionStar.color = Color.HSVtoRGB(Time.time % 360f, 0.85f, 1f);
             });
         });
     }
