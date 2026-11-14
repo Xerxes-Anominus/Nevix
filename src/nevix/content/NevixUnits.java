@@ -6,7 +6,7 @@ import mindustry.type.UnitType;
 import mindustry.type.Weapon;
 import nevix.ai.ReactoryAI;
 
-public class NevixUnit {
+public class NevixUnits {
     public static UnitType
     reactory;
     
