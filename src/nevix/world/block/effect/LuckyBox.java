@@ -10,6 +10,7 @@ import mindustry.ui.Styles;
 import arc.math.Interp;
 import arc.math.Mathf;
 import arc.struct.Seq;
+import arc.util.Log;
 import arc.util.Nullable;
 import arc.util.Tmp;
 import arc.util.io.Reads;
@@ -77,12 +78,13 @@ public class LuckyBox extends Block {
         if (rewards.isEmpty()) return;
 
         float total = 0f;
-        for (LuckyReward r : rewards) total += r.weight;
+        for (int i = 0; i < rewards.size; i++) total += rewards.get(i).weight;
         final float totalWeight = total;
 
         stats.add(NevixStat.luckyRewards, table -> {
             table.row();
-            for (LuckyReward r : rewards) {
+            for (int idx = 0; idx < rewards.size; idx++) {
+                LuckyReward r = rewards.get(idx);
                 String rewardName = r.block != null ? r.block.localizedName : r.unit.localizedName;
                 TextureRegion icon = r.block != null ? r.block.uiIcon : r.unit.uiIcon;
 
@@ -97,7 +99,9 @@ public class LuckyBox extends Block {
                     t.add(Mathf.round(chance * 10f) / 10f + "%").color(Pal.accent).padLeft(8f);
                     t.row();
                     t.add(Core.bundle.format("stat.nevix-lucky-team", own, 100 - own)).colspan(3).left().color(Pal.lightishGray).padTop(2f);
-                }).growX().pad(2f).row();
+                }).growX().uniformX().pad(2f);
+
+                if (idx % 2 == 1) table.row();
             }
         });
     }
@@ -169,7 +173,17 @@ public class LuckyBox extends Block {
 
             if (lid >= 1f && !done) {
                 done = true;
-                if (!net.client()) giveReward();
+                if (!net.client()) {
+                    final Tile origin = tile;
+                    Core.app.post(() -> {
+                        if (origin.build != this) return;
+                        try {
+                            giveReward();
+                        } catch (Throwable e) {
+                            Log.err("LuckyBox: failed to give reward", e);
+                        }
+                    });
+                }
             }
         }
 
@@ -179,8 +193,7 @@ public class LuckyBox extends Block {
             float cx = x, cy = y;
 
             LuckyReward reward = pick();
-
-            // the box is gone first, so its tile is free for the reward
+            
             origin.setNet(Blocks.air);
             if (reward == null) return;
 
@@ -217,11 +230,12 @@ public class LuckyBox extends Block {
 
         @Nullable LuckyReward pick() {
             float total = 0f;
-            for (LuckyReward r : rewards) total += r.weight;
+            for (int i = 0; i < rewards.size; i++) total += rewards.get(i).weight;
             if (total <= 0f) return null;
 
             float roll = Mathf.random(total);
-            for (LuckyReward r : rewards) {
+            for (int i = 0; i < rewards.size; i++) {
+                LuckyReward r = rewards.get(i);
                 roll -= r.weight;
                 if (roll <= 0f) return r;
             }
@@ -230,8 +244,9 @@ public class LuckyBox extends Block {
 
         Team otherTeam(Team own) {
             Seq<Team> options = new Seq<>();
-            for (var data : state.teams.active) {
-                if (data.team != own && data.team != Team.derelict) options.add(data.team);
+            for (int i = 0; i < state.teams.active.size; i++) {
+                Team t = state.teams.active.get(i).team;
+                if (t != own && t != Team.derelict) options.add(t);
             }
             if (options.any()) return options.random();
 
