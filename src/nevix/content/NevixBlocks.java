@@ -1,38 +1,24 @@
 package nevix.content;
 
+import mindustry.content.Items;
 import mindustry.type.Category;
 import mindustry.type.ItemStack;
 import mindustry.world.Block;
-import mindustry.world.blocks.defense.Wall;
-import mindustry.world.meta.BuildVisibility;
 import nevix.PromotionSys;
+import nevix.world.block.storage.VaultBlock;
 
 public class NevixBlocks {
     public static Block
-    nothing,
-    promotionShard, promotionBlock, promotionCrystal;
+    safe;
     
     public static void load() {
-        nothing = new Wall("nothing") {{
-            buildVisibility = BuildVisibility.hidden;
-        }};
-        
-        promotionShard = new Wall("promotion-shard") {{
-            buildVisibility = BuildVisibility.editorOnly;
+        safe = new VaultBlock("safe") {{
+            health = 750;
+            size = 3;
             
-            requirements(Category.distribution, ItemStack.with(PromotionSys.promotionStar, 5));
-        }};
-        
-        promotionBlock = new Wall("promotion-block") {{
-            buildVisibility = BuildVisibility.editorOnly;
+            requirements(Category.effect, ItemStack.with(Items.titanium, 500, Items.thorium, 200, PromotionSys.promotionStar, 5));
             
-            requirements(Category.distribution, ItemStack.with(PromotionSys.promotionStar, 25));
-        }};
-        
-        promotionCrystal = new Wall("promotion-crystal") {{
-            buildVisibility = BuildVisibility.editorOnly;
-            
-            requirements(Category.distribution, ItemStack.with(PromotionSys.promotionStar, 50));
+            itemCapacity = 500;
         }};
     }
 }

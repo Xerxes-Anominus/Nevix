@@ -25,6 +25,8 @@ public class NevixUnits {
             legCount = 6;
             legLength = 48f;
             
+            hidden = true;
+            
             constructor = LegsUnit::create;
             aiController = ReactoryAI::new;
             
