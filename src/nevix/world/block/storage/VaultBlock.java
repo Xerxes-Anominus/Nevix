@@ -18,19 +18,27 @@ public class VaultBlock extends StorageBlock {
     public float linkRange = -1f;
     
     public static void refreshCore(CoreBuild core, Building ignore) {
-        int cap = core.block.itemCapacity;
+        if (core == null) return;
 
-        for(Building build : core.proximity) {
-            if(build != ignore && core.owns(build)) {
+        int cap = core.block.itemCapacity;
+        
+        for (Building build : core.proximity) {
+            if (build == ignore && build instanceof VaultBuild) continue;
+            if (!core.owns(build)) continue;
+
+            if (!(build instanceof VaultBuild)) {
                 cap += build.block.itemCapacity;
             }
         }
+        
+        for (Building build : Vars.indexer.getFlagged(core.team, BlockFlag.storage)) {
+            if (build == ignore) continue;
 
-        for(Building build : Vars.indexer.getFlagged(core.team, BlockFlag.storage)) {
-            if(build != ignore && build instanceof VaultBuild vault && vault.remoteCore == core) {
+            if (build instanceof VaultBuild vault) {
                 cap += vault.block.itemCapacity;
             }
         }
+
         core.storageCapacity = cap;
     }
     
