@@ -21,11 +21,13 @@ import mindustry.entities.Effect;
 import mindustry.entities.Units;
 import mindustry.game.Team;
 import mindustry.gen.Building;
+import mindustry.gen.Groups;
 import mindustry.gen.Sounds;
 import mindustry.type.UnitType;
 import mindustry.world.Block;
 import mindustry.world.Build;
 import mindustry.world.Tile;
+import mindustry.world.blocks.ConstructBlock.ConstructBuild;
 import mindustry.world.meta.Stat;
 import nevix.world.meta.NevixStat;
 
@@ -57,7 +59,7 @@ public class LuckyBox extends Block {
         consumesTap = true;
 
         config(Boolean.class, (LuckyBuild build, Boolean open) -> {
-            if (open) build.open();
+            if (open && !state.isPaused()) build.open();
         });
     }
 
@@ -123,6 +125,20 @@ public class LuckyBox extends Block {
     public TextureRegion[] icons() {
         return Core.atlas.has(name + "-lid") ? new TextureRegion[]{region, lidRegion} : new TextureRegion[]{region};
     }
+    
+    public int maxOnMap = 5;
+
+    public int countOnMap() {
+        return Groups.build.count(b ->
+        b.block instanceof LuckyBox ||
+        (b instanceof ConstructBuild c && c.current instanceof LuckyBox)
+        );
+    }
+
+    @Override
+    public boolean canPlaceOn(Tile tile, Team team, int rotation) {
+        return super.canPlaceOn(tile, team, rotation) && countOnMap() < maxOnMap;
+    }
 
     public static class LuckyReward {
         public @Nullable Block block;
@@ -155,6 +171,7 @@ public class LuckyBox extends Block {
 
         @Override
         public void tapped() {
+            if (state.isPaused()) return;
             if (!opened) configure(true);
         }
 
