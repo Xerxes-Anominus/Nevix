@@ -9,9 +9,14 @@ import nevix.PromotionSys;
 
 public class NevixBlocks {
     public static Block
+    nothing,
     promotionShard, promotionBlock, promotionCrystal;
     
     public static void load() {
+        nothing = new Wall("nothing") {{
+            buildVisibility = BuildVisibility.hidden;
+        }};
+        
         promotionShard = new Wall("promotion-shard") {{
             buildVisibility = BuildVisibility.editorOnly;
             
