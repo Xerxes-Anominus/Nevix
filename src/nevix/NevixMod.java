@@ -15,6 +15,7 @@ import mindustry.world.Tile;
 import mindustry.world.blocks.power.NuclearReactor;
 import mindustry.world.blocks.power.NuclearReactor.NuclearReactorBuild;
 import nevix.content.EffectBlocks;
+import nevix.content.NevixBlocks;
 import nevix.content.NevixUnits;
 import nevix.content.Turrets;
 import nevix.game.NevixDifficulty;
@@ -49,6 +50,7 @@ public class NevixMod extends Mod {
     @Override
     public void loadContent() {
         PromotionSys.load();
+        NevixBlocks.load();
         Turrets.load();
         EffectBlocks.load();
         NevixUnits.load();
