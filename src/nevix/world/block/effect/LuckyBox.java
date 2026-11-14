@@ -3,6 +3,10 @@ package nevix.world.block.effect;
 import arc.Core;
 import arc.graphics.g2d.Draw;
 import arc.graphics.g2d.TextureRegion;
+import arc.scene.ui.layout.Table;
+import arc.util.Scaling;
+import mindustry.graphics.Pal;
+import mindustry.ui.Styles;
 import arc.math.Interp;
 import arc.math.Mathf;
 import arc.struct.Seq;
@@ -21,6 +25,8 @@ import mindustry.type.UnitType;
 import mindustry.world.Block;
 import mindustry.world.Build;
 import mindustry.world.Tile;
+import mindustry.world.meta.Stat;
+import nevix.world.meta.NevixStat;
 
 import static mindustry.Vars.net;
 import static mindustry.Vars.state;
@@ -62,6 +68,38 @@ public class LuckyBox extends Block {
     public LuckyBox rewardUnit(UnitType unit, int min, int max, float weight, float sameTeamChance) {
         rewards.add(new LuckyReward(null, unit, min, max, weight, sameTeamChance));
         return this;
+    }
+
+    @Override
+    public void setStats() {
+        super.setStats();
+
+        if (rewards.isEmpty()) return;
+
+        float total = 0f;
+        for (LuckyReward r : rewards) total += r.weight;
+        final float totalWeight = total;
+
+        stats.add(NevixStat.luckyRewards, table -> {
+            table.row();
+            for (LuckyReward r : rewards) {
+                String rewardName = r.block != null ? r.block.localizedName : r.unit.localizedName;
+                TextureRegion icon = r.block != null ? r.block.uiIcon : r.unit.uiIcon;
+
+                float chance = totalWeight <= 0f ? 0f : r.weight / totalWeight * 100f;
+                String amount = r.minAmount == r.maxAmount ? "x" + r.minAmount : "x" + r.minAmount + "-" + r.maxAmount;
+                int own = Mathf.round(r.sameTeamChance * 100f);
+
+                table.table(Styles.grayPanel, t -> {
+                    t.left().margin(6f);
+                    t.image(icon).size(32f).scaling(Scaling.fit).padRight(8f);
+                    t.add(rewardName + " " + amount).left().growX();
+                    t.add(Mathf.round(chance * 10f) / 10f + "%").color(Pal.accent).padLeft(8f);
+                    t.row();
+                    t.add(Core.bundle.format("stat.nevix-lucky-team", own, 100 - own)).colspan(3).left().color(Pal.lightishGray).padTop(2f);
+                }).growX().pad(2f).row();
+            }
+        });
     }
 
     @Override
@@ -141,7 +179,8 @@ public class LuckyBox extends Block {
             float cx = x, cy = y;
 
             LuckyReward reward = pick();
-            
+
+            // the box is gone first, so its tile is free for the reward
             origin.setNet(Blocks.air);
             if (reward == null) return;
 
