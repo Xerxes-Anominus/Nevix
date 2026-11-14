@@ -18,7 +18,7 @@ public class NevixUnits {
             health = Blocks.thoriumReactor.health;
             hitSize = 24f;
             
-            speed = 10f;
+            speed = 5f;
             
             range = 80f;
             
@@ -31,7 +31,7 @@ public class NevixUnits {
             drawCell = false;
             
             weapons.add(new Weapon("super-gun") {{
-                reload = 45f;
+                reload = 60f;
                 
                 mirror = false;
                 x = 0f;
@@ -45,7 +45,7 @@ public class NevixUnits {
                     damage = 0f;
                     speed = 0f;
                     lifetime = 0f;
-                    shootEffect = Fx.reactorExplosion;
+                    despawnEffect = Fx.reactorExplosion;
                     splashDamage = 5000f;
                     splashDamageRadius = 80f;
                 }};
