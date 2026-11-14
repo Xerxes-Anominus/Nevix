@@ -12,7 +12,6 @@ import arc.math.Mathf;
 import arc.struct.Seq;
 import arc.util.Log;
 import arc.util.Nullable;
-import arc.util.Tmp;
 import arc.util.io.Reads;
 import arc.util.io.Writes;
 import mindustry.content.Blocks;
@@ -71,6 +70,16 @@ public class LuckyBox extends Block {
     public LuckyBox rewardUnit(UnitType unit, int min, int max, float weight, float sameTeamChance) {
         rewards.add(new LuckyReward(null, unit, min, max, weight, sameTeamChance));
         return this;
+    }
+    
+    public void sortRewards() {
+        rewards.sort((a, b) -> Float.compare(b.weight, a.weight));
+    }
+
+    @Override
+    public void init() {
+        sortRewards();
+        super.init();
     }
 
     @Override
@@ -237,8 +246,7 @@ public class LuckyBox extends Block {
                 for (int i = 0; i < amount; i++) {
                     if (respectUnitCap && !Units.canCreate(target, reward.unit)) break;
 
-                    Tmp.v1.trns(Mathf.random(360f), Mathf.random(spread * tilesize));
-                    reward.unit.spawn(target, cx + Tmp.v1.x, cy + Tmp.v1.y);
+                    reward.unit.spawn(target, cx, cy);
                 }
             }
         }
