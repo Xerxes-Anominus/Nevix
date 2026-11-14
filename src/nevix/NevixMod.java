@@ -5,6 +5,7 @@ import arc.util.CommandHandler;
 import mindustry.game.EventType.ClientLoadEvent;
 import mindustry.mod.Mod;
 import nevix.content.EffectBlocks;
+import nevix.content.NevixUnits;
 import nevix.content.Turrets;
 import nevix.game.NevixDifficulty;
 import nevix.ui.DayNightPanel;
@@ -40,5 +41,6 @@ public class NevixMod extends Mod {
         PromotionSys.load();
         Turrets.load();
         EffectBlocks.load();
+        NevixUnits.load();
     }
 }
