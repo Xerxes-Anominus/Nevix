@@ -22,7 +22,7 @@ public final class EffectBlocks {
             health = 20;
             variants = 3;
             
-            rewardBlock(Blocks.air, 0, 0, 4000f, 1f);
+            rewardBlock(Blocks.boulder, 0, 0, 4000f, 1f);
             rewardBlock(Blocks.copperWall, 0, 3, 2000f, 0.4f);
             rewardBlock(Blocks.duo, 0, 1, 1500f, 0.4f);
             rewardBlock(NevixBlocks.promotionShard, 0, 1, 300f, 1f);
