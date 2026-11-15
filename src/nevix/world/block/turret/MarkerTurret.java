@@ -150,27 +150,35 @@ public class MarkerTurret extends NevixTurret {
         @Override
         public void getStats(Table table) {
             addStat(table, NevixStat.generals, "", Pal.accent);
-            addStat(table, Stat.health, "" + this.maxHealth());
-            addStat(table, Stat.range, "" + (range() / Vars.tilesize) + " " + NevixStatUnit.get(NevixStatUnit.tile));
-            addStat(table, Stat.reload, "" + (Mathf.round(reload / 60f * 100f) / 100f) + " " + NevixStatUnit.get(StatUnit.seconds));
+            addStat(table, Stat.health, "" + maxHealth());
+
+            int rangeBonus = Mathf.round((range() - Range[0]) / Vars.tilesize);
+            addStat(table, Stat.range, Mathf.round(range() / Vars.tilesize) + " " + NevixStatUnit.get(NevixStatUnit.tile)
+            + (rangeBonus > 0 ? " [gray](+" + rangeBonus + " " + NevixStatUnit.get(NevixStatUnit.tile) + ")" : ""));
+
+            addStat(table, Stat.reload, (Mathf.round(reload / 60f * 100f) / 100f) + " " + NevixStatUnit.get(StatUnit.seconds));
 
             addStat(table, NevixStat.none, "");
-
             addStat(table, NevixStat.ammo, "", Pal.accent);
-            if(peekAmmo() != null) {
-                addBulletStatTable(table, bt -> {
-                    addBulletStat(bt, Stat.damage, "" + peekAmmo().damage);
-                });
+            if (peekAmmo() != null) {
+                addBulletStatTable(table, bt -> addBulletStat(bt, Stat.damage, "" + Mathf.round(peekAmmo().damage)));
             }
 
             addStat(table, NevixStat.none, "");
-
             addStat(table, NevixStat.special, "", Pal.accent);
+
+            int markDmgBonus = Mathf.round(markDamage() - MarkDamage[0]);
+            int markRangeBonus = Mathf.round((markRange() - MarkRange[0]) / Vars.tilesize);
+            int markTimeDelta = Mathf.round((markTime() - MarkTime[0]) / 60f); // âm
+
             addBulletStatTable(table, bt -> {
-                addBulletStat(bt, NevixStat.markDamage, "" + markDamage());
-                addBulletStat(bt, NevixStat.markRange, "" + (markRange() / Vars.tilesize) + " " + NevixStatUnit.get(NevixStatUnit.tile));
-                addBulletStat(bt, NevixStat.markInterval, "" + Mathf.round(markTime() / 60f * 10f) / 10f + " " + NevixStatUnit.get(StatUnit.seconds));
-                addBulletStat(bt, NevixStat.markSplash, "" + (40f / Vars.tilesize) + " " + NevixStatUnit.get(NevixStatUnit.tile));
+                addBulletStat(bt, NevixStat.markDamage, "" + Mathf.round(markDamage())
+                + (markDmgBonus > 0 ? " [gray](+" + markDmgBonus + ")" : ""));
+                addBulletStat(bt, NevixStat.markRange, Mathf.round(markRange() / Vars.tilesize) + " " + NevixStatUnit.get(NevixStatUnit.tile)
+                + (markRangeBonus > 0 ? " [gray](+" + markRangeBonus + " " + NevixStatUnit.get(NevixStatUnit.tile) + ")" : ""));
+                addBulletStat(bt, NevixStat.markInterval, Mathf.round(markTime() / 60f) + " " + NevixStatUnit.get(StatUnit.seconds)
+                + (markTimeDelta < 0 ? " [gray](-" + Math.abs(markTimeDelta) + " " + NevixStatUnit.get(StatUnit.seconds) + ")" : ""));
+                addBulletStat(bt, NevixStat.markSplash, Mathf.round(40f / Vars.tilesize) + " " + NevixStatUnit.get(NevixStatUnit.tile));
                 addBulletStat(bt, NevixStat.none, "markMechanic");
             });
         }
