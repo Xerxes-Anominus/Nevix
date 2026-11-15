@@ -64,7 +64,9 @@ public class NevixMod extends Mod {
                 if(event.tile.block() != Blocks.thoriumReactor) return;
                 if(Mathf.chance(Core.settings.getInt("reactory-spawn-rate") / 1000f)) {
                     Team team = Team.get(Mathf.random(255));
-                    NevixUnits.reactory.spawn(team, build.x, build.y);
+                    Time.run(60f, () -> {
+                        NevixUnits.reactory.spawn(team, build.x, build.y);
+                    });
                 }
             }
         });
