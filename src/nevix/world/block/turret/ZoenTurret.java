@@ -82,7 +82,7 @@ public class ZoenTurret extends NevixTurret {
         public void getStats(Table table) {
             addStat(table, NevixStat.generals, "", Pal.accent);
 
-            int hpBonus = hasHealthScaling ? Mathf.round(getSec() * 10f) : 0;
+            int hpBonus = hasHealthScaling ? Mathf.round(getSec() * 5f) : 0;
             addStat(table, Stat.health, "" + Mathf.round(maxHealth())
             + (hpBonus > 0 ? " [gray](+" + hpBonus + ")" : ""));
 
@@ -96,21 +96,22 @@ public class ZoenTurret extends NevixTurret {
             addStat(table, NevixStat.ammo, "", Pal.accent);
             if (peekAmmo() != null) {
                 float baseDmg = peekAmmo().damage;
-                float totalDmg = hasDamageScaling ? baseDmg + getSec() : baseDmg;
+                float totalDmg = hasDamageScaling ? baseDmg + getSec() / 2f : baseDmg;
                 float dmgBonus = totalDmg - baseDmg;
                 addBulletStatTable(table, bt -> {
                     addBulletStat(bt, Stat.damage, "" + (Mathf.round(totalDmg * 10f) / 10f)
                     + (dmgBonus > 0.05f ? " [gray](+" + (Mathf.round(dmgBonus * 10f) / 10f) + ")" : ""));
                 });
             }
-
+            
             if (hasTimeScaling || hasDamageScaling || hasHealthScaling || hasRange) {
                 addStat(table, NevixStat.none, "");
                 addStat(table, NevixStat.special, "", Pal.accent);
-
+                
                 if (hasTimeScaling) {
                     addBulletStatTable(table, bt -> {
-                        addBulletStat(bt, NevixStat.age, (Mathf.round(getSec() * 10f) / 10f) + " " + NevixStatUnit.get(StatUnit.seconds));
+                        addBulletStat(bt, NevixStat.age,
+                        (Mathf.round(getSec() * 10f) / 10f) + " " + NevixStatUnit.get(StatUnit.seconds));
                         addBulletStat(bt, NevixStat.none, "zoenTimeScaling");
                     });
                 }
@@ -145,7 +146,7 @@ public class ZoenTurret extends NevixTurret {
         @Override
         public float maxHealth() {
             if(!hasHealthScaling) return 10f;
-            return 10f + getSec() * 10f;
+            return 10f + getSec() * 5f;
         }
         
         @Override
@@ -165,7 +166,7 @@ public class ZoenTurret extends NevixTurret {
             
             Bullet b = type.create(this, this.team, bulletX, bulletY, shootAngle, -1f, (1f - velocityRnd) + Mathf.random(velocityRnd) + extraVelocity, lifeScl, null, mover, targetPos.x, targetPos.y);
             if(hasDamageScaling) {
-                b.damage = 1f + getSec();
+                b.damage = 1f + getSec() / 2f;
             }
             if(hasRange) {
                 b.lifetime += 6f * 8f / b.type.speed;
