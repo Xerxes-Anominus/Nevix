@@ -32,6 +32,7 @@ public class NevixMod extends Mod {
             DayNightPanel.init();
             UpdateLog.init();
             DifficultyButtons.init();
+            runEvent();
         });
     }
 
