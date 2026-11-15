@@ -4,14 +4,14 @@ import arc.Core;
 import arc.Events;
 import arc.math.Mathf;
 import arc.util.Time;
+import mindustry.Vars;
+import mindustry.game.EventType.ClientLoadEvent;
 import mindustry.game.EventType.Trigger;
 import mindustry.game.EventType.UnitBulletDestroyEvent;
 import mindustry.type.Item;
 
 public class PromotionSys {
     public static Item promotionStar;
-    
-    private static final float dropChance = 1f;
 
     public static void load() {
         promotionStar = new Item("promotion-star");
@@ -36,6 +36,13 @@ public class PromotionSys {
         Events.run(Trigger.update, () -> {
             if(promotionStar == null) return;
             promotionStar.color.fromHsv(Time.time % 360f, 0.85f, 1f);
+        });
+        
+        Events.on(ClientLoadEvent.class, event -> {
+            Vars.content.block("sorter").drawDynamic = true;
+            Vars.content.block("inverted-sorter").drawDynamic = true;
+            Vars.content.block("unloader").drawDynamic = true;
+            Vars.content.block("item-source").drawDynamic = true;
         });
     }
 }
