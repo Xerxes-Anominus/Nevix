@@ -31,6 +31,8 @@ public class NevixUnits {
             aiController = ReactoryAI::new;
             
             drawCell = false;
+            isEnemy = false;
+            useUnitCap = false;
             
             weapons.add(new Weapon("super-gun") {{
                 reload = 60f;
@@ -49,7 +51,7 @@ public class NevixUnits {
                     lifetime = 0f;
                     despawnEffect = Fx.reactorExplosion;
                     splashDamage = 5000f;
-                    splashDamageRadius = 80f;
+                    splashDamageRadius = 120f;
                 }};
             }});
         }};
