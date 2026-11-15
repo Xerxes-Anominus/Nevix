@@ -39,5 +39,5 @@ public class NevixStat {
     markInterval = new Stat("mark-interval"),
     markSplash = new Stat("mark-splash"),
 
-    pierce = new Stat("pierce"),
+    pierce = new Stat("pierce");
 }
