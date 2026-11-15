@@ -10,6 +10,8 @@ public class NevixStat {
     
     none = new Stat("none"),
     
+    age = new Stat("age"),
+    
     fragBullets = new Stat("frag-bullets"),
     fragBullet = new Stat("frag-bullet"),
     
@@ -38,6 +40,4 @@ public class NevixStat {
     markSplash = new Stat("mark-splash"),
 
     pierce = new Stat("pierce"),
-    
-    luckyRewards = new Stat("lucky-rewards");
 }
