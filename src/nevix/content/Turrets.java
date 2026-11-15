@@ -48,8 +48,6 @@ public final class Turrets {
         
         zoen = new ZoenTurret("zoen") {{
             requirements(Category.turret, ItemStack.with(Items.copper, 20));
-            
-            drawer = new DrawTurret("reinforced-");
         }};
     }
 }
