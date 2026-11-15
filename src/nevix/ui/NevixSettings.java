@@ -3,6 +3,7 @@ package nevix.ui;
 import arc.Core;
 import mindustry.Vars;
 import mindustry.gen.Icon;
+import mindustry.graphics.Pal;
 import mindustry.ui.dialogs.SettingsMenuDialog.SettingsTable;
 
 public final class NevixSettings {
