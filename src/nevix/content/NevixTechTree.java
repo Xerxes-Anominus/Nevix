@@ -16,9 +16,10 @@ public final class NevixTechTree {
             new TechNode(root, PromotionSys.promotionStar, PromotionSys.promotionStar.researchRequirements());
         }
 
-        attach(Blocks.scatter,  Turrets.spinup);
-        attach(Blocks.fuse,     Turrets.berserker);
-        attach(Blocks.tsunami,  Turrets.marker);
+        attach(Blocks.scatter, Turrets.spinup);
+        attach(Blocks.fuse, Turrets.berserker);
+        attach(Blocks.tsunami, Turrets.marker);
+        attach(Blocks.vault, NevixBlocks.safe);
     }
 
     private static void attach(UnlockableContent parent, UnlockableContent child) {
