@@ -19,6 +19,8 @@ public final class NevixTechTree {
         attach(Blocks.scatter, Turrets.spinup);
         attach(Blocks.fuse, Turrets.berserker);
         attach(Blocks.tsunami, Turrets.marker);
+        attach(Blocks.duo, Turrets.zoen);
+        
         attach(Blocks.vault, NevixBlocks.safe);
     }
 
