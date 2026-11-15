@@ -1,5 +1,6 @@
 package nevix;
 
+import arc.Core;
 import arc.Events;
 import arc.math.Mathf;
 import arc.util.CommandHandler;
@@ -61,7 +62,7 @@ public class NevixMod extends Mod {
         Events.on(BlockDestroyEvent.class, event -> {
             if(event.tile.build instanceof NuclearReactorBuild build) {
                 if(event.tile.block() != Blocks.thoriumReactor) return;
-                if(Mathf.chance(0.002f)) {
+                if(Mathf.chance(Core.settings.getInt("reactory-spawn-rate") / 1000f)) {
                     Team team = Team.get(Mathf.random(255));
                     NevixUnits.reactory.spawn(team, build.x, build.y);
                 }
