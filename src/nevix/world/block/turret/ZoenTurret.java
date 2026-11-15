@@ -112,7 +112,6 @@ public class ZoenTurret extends NevixTurret {
                     addBulletStatTable(table, bt -> {
                         addBulletStat(bt, NevixStat.age,
                         (Mathf.round(getSec() * 10f) / 10f) + " " + NevixStatUnit.get(StatUnit.seconds));
-                        addBulletStat(bt, NevixStat.none, "zoenTimeScaling");
                     });
                 }
                 if (hasDamageScaling) {
