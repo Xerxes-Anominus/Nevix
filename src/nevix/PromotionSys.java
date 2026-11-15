@@ -1,46 +1,40 @@
 package nevix;
 
 import arc.Events;
-import arc.graphics.Color;
 import arc.math.Mathf;
 import arc.util.Time;
-import mindustry.Vars;
-import mindustry.game.EventType.ClientLoadEvent;
 import mindustry.game.EventType.Trigger;
 import mindustry.game.EventType.UnitBulletDestroyEvent;
-import mindustry.gen.Bullet;
-import mindustry.gen.Unit;
 import mindustry.type.Item;
-import mindustry.world.blocks.distribution.Sorter;
 
 public class PromotionSys {
     public static Item promotionStar;
     
+    private static final float dropChance = 1f;
+
     public static void load() {
         promotionStar = new Item("promotion-star");
     }
-    
+
     public static void init() {
         Events.on(UnitBulletDestroyEvent.class, event -> {
-            Unit u = event.unit;
-            Bullet b = event.bullet;
-            if(!u.dead()) return;
+            var u = event.unit;
+            var b = event.bullet;
+            if(u == null || b == null || b.team == null) return;
             if(u.team == b.team) return;
-            if(Mathf.chance(0.1f)) return;
-            b.team.core().items.add(promotionStar, Mathf.random(0, 3));
+            if(!Mathf.chance(dropChance / 100f)) return;
+
+            var core = b.team.core();
+            if(core == null) return;
+
+            int amount = Mathf.random(1, 3);
+            amount = Math.min(amount, core.storageCapacity - core.items.get(promotionStar));
+            if(amount > 0) core.items.add(promotionStar, amount);
         });
         
-        
-        Events.on(ClientLoadEvent.class, event -> {
-            Vars.content.blocks().each(b -> {
-                if(b instanceof Sorter sorter) {
-                    sorter.drawDynamic = true;
-                }
-            });
-            
-            Events.run(Trigger.update, () -> {
-                promotionStar.color = Color.HSVtoRGB(Time.time % 360f, 0.85f, 1f);
-            });
+        Events.run(Trigger.update, () -> {
+            if(promotionStar == null) return;
+            promotionStar.color.fromHsv(Time.time % 360f, 0.85f, 1f);
         });
     }
 }
