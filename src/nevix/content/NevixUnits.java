@@ -3,6 +3,8 @@ package nevix.content;
 import mindustry.Vars;
 import mindustry.content.Blocks;
 import mindustry.content.Fx;
+import mindustry.content.StatusEffects;
+import mindustry.content.UnitTypes;
 import mindustry.entities.bullet.BasicBulletType;
 import mindustry.entities.bullet.BulletType;
 import mindustry.entities.bullet.PointBulletType;
@@ -118,7 +120,7 @@ public class NevixUnits {
                 reload = 180f;
                 shoot.shots = 4;
                 shoot.shotDelay = 5f;
-                shootSound = Sounds.shootBig;
+                shootSound = Sounds.shoot;
                 bullet = new BasicBulletType(10f, 450f) {{
                     lifetime = (30f * Vars.tilesize) / 10f;
                     pierce = true;
@@ -143,7 +145,7 @@ public class NevixUnits {
 
             range = 75f * Vars.tilesize;
             
-            auraHealth = 250f;
+            auraHealth = 250;
             auraRechargeTime = 60f * 60f;
             auraHealPercent = 0.01f;
 
@@ -162,7 +164,7 @@ public class NevixUnits {
                 inaccuracy = 2f;
                 shoot.shots = 2;
                 shoot.shotDelay = 6f;
-                shootSound = Sounds.largeCannon;
+                shootSound = UnitTypes.reign.weapons.get(0).shootSound;
                 
                 bullet = new BasicBulletType(14f, 900f) {{
                     lifetime = (50f * Vars.tilesize) / 14f;
@@ -191,7 +193,7 @@ public class NevixUnits {
                 reload = 15f;
                 controllable = false;
                 autoTarget = true;
-                shootSound = Sounds.flame;
+                shootSound = Sounds.shootFlame;
 
                 bullet = new BulletType(8f, 250f) {{
                     lifetime = (20f * Vars.tilesize) / 8f;
@@ -231,7 +233,7 @@ public class NevixUnits {
                     reload = 60f;
                     controllable = false;
                     autoTarget = true;
-                    shootSound = Sounds.railgun;
+                    shootSound = Sounds.shootForeshadow;
 
                     bullet = new PointBulletType() {{
                         damage = 600f;
