@@ -4,6 +4,7 @@ import mindustry.content.Blocks;
 import mindustry.content.Fx;
 import mindustry.entities.bullet.BasicBulletType;
 import mindustry.gen.LegsUnit;
+import mindustry.gen.MechUnit;
 import mindustry.gen.Sounds;
 import mindustry.type.UnitType;
 import mindustry.type.Weapon;
@@ -62,6 +63,8 @@ public class NevixUnits {
             health = 1;
             speed = 0.15f;
             canDrown = false;
+            
+            constructor = MechUnit::create;
         }};
     }
 }
