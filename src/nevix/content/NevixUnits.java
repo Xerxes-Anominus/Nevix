@@ -147,7 +147,7 @@ public class NevixUnits {
 
             range = 75f * Vars.tilesize;
             
-            auraHealth = 400f;
+            auraHealth = 400;
             auraRechargeTime = 60f * 60f;
             auraHealPercent = 0.015f;
 
