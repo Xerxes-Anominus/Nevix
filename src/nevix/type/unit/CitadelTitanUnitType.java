@@ -19,12 +19,18 @@ import nevix.ai.CitadelDroneAI;
 public class CitadelTitanUnitType extends TitanUnitType {
     public UnitType droneType;
     public int droneCount = 2;
-    
-    public Color haloColor = Color.valueOf("1a1830");
-    public float haloRadius = 150f;
-    public float haloStroke = 3f;
-    public float haloRotation = 0f;
-    public float haloSpin = 0f;
+
+    public Color haloInnerColor = Color.valueOf("ff7a1a");
+    public Color haloOuterColor = Color.valueOf("ffd43b");
+    public Color haloCoreColor = Color.valueOf("fff6c2");
+    public int haloLayers = 6;
+    public float haloRadius = 90f;
+    public float haloOuterRadius = 138f;
+    public float haloStroke = 2.4f;
+    public float haloTriangleLength = 36f;
+    public float haloTriangleWidth = 18f;
+    public float haloSpin = 0.8f;
+    public int haloSegments = 16;
 
     protected final ObjectMap<Unit, Seq<Unit>> drones = new ObjectMap<>();
 
@@ -55,7 +61,7 @@ public class CitadelTitanUnitType extends TitanUnitType {
             d.add();
             list.add(d);
         }
-        
+
         if (Time.time % 300f < Time.delta) {
             Seq<Unit> keys = drones.keys().toSeq();
             for (Unit k : keys) {
@@ -71,41 +77,51 @@ public class CitadelTitanUnitType extends TitanUnitType {
     }
 
     protected void drawHalo(Unit unit) {
-        float r = haloRadius;
-        float ang = haloRotation + Time.time * haloSpin;
-        float cx = unit.x, cy = unit.y;
-
-        float spike = r * 0.6f;
-        float halfW = r * 0.24f;
+        float cx = unit.x;
+        float cy = unit.y;
+        float rot = unit.rotation;
+        float pulse = Mathf.absin(Time.time, 60f, 1f);
 
         Draw.z(Layer.flyingUnit + 1f);
-        Draw.color(haloColor);
-        
-        Lines.stroke(haloStroke);
-        Lines.circle(cx, cy, r);
-        
-        for (int i = 0; i < 4; i++) {
-            float a = ang + i * 90f;
-            float bx = cx + Angles.trnsx(a, r - 2f);
-            float by = cy + Angles.trnsy(a, r - 2f);
-            float tx = cx + Angles.trnsx(a, r + spike);
-            float ty = cy + Angles.trnsy(a, r + spike);
-            float px = Angles.trnsx(a + 90f, halfW);
-            float py = Angles.trnsy(a + 90f, halfW);
-            Fill.tri(bx - px, by - py, bx + px, by + py, tx, ty);
+
+        for (int i = 0; i < haloLayers; i++) {
+            float t = i / (haloLayers - 1f);
+            Tmp.c1.set(haloInnerColor).lerp(haloOuterColor, Math.min(t * 2f, 1f)).lerp(haloCoreColor, Math.max(t * 2f - 1f, 0f));
+            Draw.color(Tmp.c1);
+            Draw.alpha(Mathf.lerp(0.08f, 0.4f, t) * (0.85f + pulse * 0.15f));
+            Fill.circle(cx, cy, haloRadius * (1f - i / (float) haloLayers));
         }
-        
-        float c = Mathf.cosDeg(ang), s = Mathf.sinDeg(ang);
-        float lx = -0.73f * r, rx = 0.70f * r, mx = 0.12f * r, my = 0.20f * r;
 
-        float lX = cx + lx * c,        lY = cy + lx * s;
-        float rX = cx + rx * c,        rY = cy + rx * s;
-        float pX = cx + mx * c - my * s, pY = cy + mx * s + my * c;
-        float qX = cx + mx * c + my * s, qY = cy + mx * s - my * c;
+        Draw.color(haloInnerColor);
+        Lines.stroke(haloStroke);
+        Lines.circle(cx, cy, haloRadius);
 
-        Fill.tri(lX, lY, pX, pY, qX, qY);
-        Fill.tri(rX, rY, pX, pY, qX, qY);
+        for (int i = 0; i < 2; i++) {
+            float a = rot + 90f + i * 180f;
+            drawTriangle(cx, cy, a, haloRadius - 2f, haloTriangleLength, haloTriangleWidth, haloInnerColor);
+            drawTriangle(cx, cy, a, haloRadius - 2f, haloTriangleLength * 0.66f, haloTriangleWidth * 0.66f, haloOuterColor);
+            drawTriangle(cx, cy, a, haloRadius - 2f, haloTriangleLength * 0.33f, haloTriangleWidth * 0.33f, haloCoreColor);
+        }
+
+        float spin = rot - Time.time * haloSpin;
+        Lines.stroke(haloStroke * 1.5f);
+        for (int i = 0; i < haloSegments; i++) {
+            float t = Math.abs(i * 2f / haloSegments - 1f);
+            Draw.color(Tmp.c2.set(haloInnerColor).lerp(haloOuterColor, t));
+            Lines.arc(cx, cy, haloOuterRadius, 0.5f / haloSegments, spin + i * 360f / haloSegments);
+        }
 
         Draw.reset();
+    }
+
+    protected void drawTriangle(float cx, float cy, float angle, float baseRadius, float length, float halfWidth, Color color) {
+        Draw.color(color);
+        float bx = cx + Angles.trnsx(angle, baseRadius);
+        float by = cy + Angles.trnsy(angle, baseRadius);
+        float tx = cx + Angles.trnsx(angle, baseRadius + length);
+        float ty = cy + Angles.trnsy(angle, baseRadius + length);
+        float px = Angles.trnsx(angle + 90f, halfWidth);
+        float py = Angles.trnsy(angle + 90f, halfWidth);
+        Fill.tri(bx - px, by - py, bx + px, by + py, tx, ty);
     }
 }
