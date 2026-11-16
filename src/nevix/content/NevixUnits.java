@@ -8,10 +8,12 @@ import mindustry.gen.Sounds;
 import mindustry.type.UnitType;
 import mindustry.type.Weapon;
 import nevix.ai.ReactoryAI;
+import nevix.type.unit.TitanUnitType;
 
 public class NevixUnits {
     public static UnitType
-    reactory;
+    reactory,
+    citadel;
     
     public static void load() {
         reactory = new UnitType("reactory") {{
@@ -54,6 +56,12 @@ public class NevixUnits {
                     splashDamageRadius = 120f;
                 }};
             }});
+        }};
+        
+        citadel = new TitanUnitType("citadel") {{
+            health = 1;
+            speed = 0.15f;
+            canDrown = false;
         }};
     }
 }
