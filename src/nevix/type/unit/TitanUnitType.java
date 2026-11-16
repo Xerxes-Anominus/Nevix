@@ -7,7 +7,9 @@ import arc.graphics.g2d.Lines;
 import arc.math.Angles;
 import arc.math.Mathf;
 import arc.util.Time;
+import arc.util.Tmp;
 import mindustry.content.Fx;
+import mindustry.entities.Units;
 import mindustry.entities.abilities.Ability;
 import mindustry.gen.Groups;
 import mindustry.gen.Unit;
@@ -15,34 +17,25 @@ import mindustry.graphics.Layer;
 import mindustry.type.UnitType;
 
 public class TitanUnitType extends UnitType {
-    /** Máu của aura (điểm). Mỗi viên đạn >= auraMinDamage trừ 1..10 điểm. */
     public int auraHealth = 100;
-    /** Thời gian hồi aura sau khi vỡ (tick). */
     public float auraRechargeTime = 600f;
-    /** % máu tối đa hồi mỗi giây khi aura còn (0.01 = 1%/s). */
     public float auraHealPercent = 0.01f;
-    /** BÁN KÍNH aura. <= 0 thì tự tính theo hitSize. */
     public float auraSize;
-
-    /** Tỉ lệ phản đạn (0 = chỉ chặn, 1 = luôn phản). Đạn không phản được thì luôn bị chặn. */
+    
     public float auraReflectChance = 0.5f;
-    /** Đạn dưới mức này không tốn điểm aura. */
     public float auraMinDamage = 100f;
-    /** Mỗi bậc sát thương tốn thêm 1 điểm. */
     public float auraDamageStep = 100f;
-    /** Sát thương tối đa tính cost (1000 / 100 = tối đa 10 điểm). */
     public float auraMaxDamage = 1000f;
-    /** Thời gian hiện lưới lục giác khi trúng đạn (tick). */
     public float auraHitTime = 45f;
-    /** Cỡ ô lục giác so với bán kính aura. */
     public float auraHexScale = 0.16f;
-    /** Độ rộng vùng hiện lưới quanh hướng trúng đạn (so với bán kính aura). */
     public float auraHitRadius = 0.85f;
-
-    /**
-     * 1 = nền mờ, 2 = viền aura mờ, 3 = đường lưới lục giác,
-     * 4 = nền ô lục giác, 5 = cung sáng ở rìa chỗ trúng, 6 = chớp khi trúng
-     */
+    
+    public boolean pushFlying = true;
+    public boolean pushFlyingAllies = true;
+    public float pushFlyingStrength = 0.3f;
+    public float pushFlyingPadding = 0f;
+    public boolean immuneKnockback = true;
+    
     public Color
     auraColor1, auraColor2, auraColor3,
     auraColor4, auraColor5, auraColor6;
@@ -67,22 +60,65 @@ public class TitanUnitType extends UnitType {
         abilities.add(new TitanAura());
     }
 
-    /** Điểm aura bị trừ cho 1 viên đạn có sát thương `damage`. */
     public int auraCost(float damage) {
         if (damage < auraMinDamage) return 0;
         return (int) Mathf.clamp(damage / auraDamageStep, 1f, auraMaxDamage / auraDamageStep);
     }
 
     @Override
+    public void update(Unit unit) {
+        super.update(unit);
+        
+        if (immuneKnockback) {
+            float max = unit.speed();
+            if (unit.vel.len2() > max * max) unit.vel.setLength(max);
+        }
+
+        if (pushFlying) pushFlyers(unit);
+    }
+
+    protected void pushFlyers(Unit unit) {
+        final float rad = hitSize / 2f + pushFlyingPadding;
+        final float range = rad + 48f;
+
+        Units.nearby(unit.x - range, unit.y - range, range * 2f, range * 2f, other -> {
+            if (other == unit || !other.isFlying() || !other.isValid()) return;
+            if (!pushFlyingAllies && other.team == unit.team) return;
+
+            float dx = other.x - unit.x, dy = other.y - unit.y;
+            float dst = Mathf.dst(dx, dy);
+            float min = rad + other.hitSize / 2f;
+            if (dst >= min) return;
+
+            if (dst < 0.001f) {
+                Tmp.v1.trns(Mathf.random(360f), 1f);
+            } else {
+                Tmp.v1.set(dx, dy);
+            }
+
+            float push = Math.min((min - dst) * pushFlyingStrength * Time.delta, min - dst);
+            Tmp.v1.setLength(push);
+            other.x += Tmp.v1.x;
+            other.y += Tmp.v1.y;
+        });
+    }
+
+    @Override
+    public boolean hittable(Unit unit) {
+        for (Ability a : unit.abilities) {
+            if (a instanceof TitanAura) return !((TitanAura) a).active();
+        }
+        return super.hittable(unit);
+    }
+
+    @Override
     public boolean killable(Unit unit) {
-        // Còn aura thì không nhận sát thương
         for (Ability a : unit.abilities) {
             if (a instanceof TitanAura) return !((TitanAura) a).active();
         }
         return true;
     }
-
-    /** Trạng thái aura nằm riêng cho từng unit (Ability được copy cho mỗi unit). */
+    
     public static class TitanAura extends Ability {
         static final int maxHits = 8;
         static final float sqrt3 = (float) Math.sqrt(3);
@@ -90,8 +126,7 @@ public class TitanUnitType extends UnitType {
         public int health;
         public float recharge, scale;
         boolean started;
-
-        // Cấp phát lazy để mỗi unit có mảng riêng (clone chỉ copy tham chiếu)
+        
         float[] hitAngle, hitLife;
         int nextHit;
 
@@ -104,7 +139,6 @@ public class TitanUnitType extends UnitType {
                 hitAngle = new float[maxHits];
                 hitLife = new float[maxHits];
             }
-            // Trúng gần chỗ cũ thì làm mới thay vì thêm lưới chồng lên
             for (int i = 0; i < maxHits; i++) {
                 if (hitLife[i] > 0.3f && Math.abs(Angles.angleDist(hitAngle[i], angle)) < 14f) {
                     hitAngle[i] = angle;
@@ -136,7 +170,6 @@ public class TitanUnitType extends UnitType {
             }
 
             if (health > 0) {
-                // Hồi máu %/giây
                 unit.heal(unit.maxHealth * t.auraHealPercent * Time.delta / 60f);
 
                 final float r = t.auraSize;
@@ -148,13 +181,11 @@ public class TitanUnitType extends UnitType {
                     if (!b.within(unit, r + b.hitSize / 2f)) return;
 
                     health -= t.auraCost(b.damage);
-
-                    // Hướng từ tâm unit ra viên đạn: chỗ này sẽ hiện lưới
+                    
                     float normal = unit.angleTo(b);
                     addHit(normal);
 
                     if (reflect) {
-                        // phản xạ qua pháp tuyến
                         float out = 2f * normal - b.rotation() + 180f;
                         b.vel.setAngle(out);
                         b.rotation(out);
@@ -190,15 +221,13 @@ public class TitanUnitType extends UnitType {
             float r = t.auraSize * scale;
             float z = Draw.z();
             Draw.z(Layer.shields);
-
-            // Đường tròn mờ bao quanh unit
+            
             Draw.color(t.auraColor1, 0.06f * scale);
             Fill.circle(x, y, r);
             Draw.color(t.auraColor2, (0.28f + Mathf.sin(Time.time, 40f, 0.05f)) * scale);
             Lines.stroke(1.5f);
             Lines.circle(x, y, r);
-
-            // Lưới lục giác + cung sáng ở hướng bị bắn
+            
             if (hitLife != null) {
                 for (int i = 0; i < maxHits; i++) {
                     if (hitLife[i] > 0.01f) drawHit(t, x, y, r, hitAngle[i], hitLife[i]);
@@ -210,12 +239,11 @@ public class TitanUnitType extends UnitType {
         }
 
         void drawHit(TitanUnitType t, float x, float y, float r, float angle, float life) {
-            float fade = life * life * scale; // tắt dần mượt
+            float fade = life * life * scale;
             float px = x + Angles.trnsx(angle, r), py = y + Angles.trnsy(angle, r);
             float s = r * t.auraHexScale;
             float reach = r * t.auraHitRadius;
-
-            // Cung sáng ở rìa chỗ trúng
+            
             float span = 80f;
             Draw.color(t.auraColor3, 0.35f * fade);
             Lines.stroke(5f);
@@ -223,8 +251,7 @@ public class TitanUnitType extends UnitType {
             Draw.color(t.auraColor5, 0.9f * fade);
             Lines.stroke(2f);
             Lines.arc(x, y, r, span / 360f, angle - span / 2f);
-
-            // Lưới lục giác (flat-top) chỉ hiện gần điểm trúng, nằm trong aura
+            
             int n = Mathf.ceil(r / (s * 1.5f)) + 1;
             for (int col = -n; col <= n; col++) {
                 float cx = x + col * s * 1.5f;
@@ -248,8 +275,7 @@ public class TitanUnitType extends UnitType {
                     Lines.poly(cx, cy, 6, s * 0.92f);
                 }
             }
-
-            // Chớp nhẹ tại điểm trúng
+            
             Draw.color(t.auraColor6, 0.5f * fade);
             Fill.circle(px, py, s * 0.6f * life);
         }
