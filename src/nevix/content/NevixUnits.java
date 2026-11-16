@@ -1,5 +1,6 @@
 package nevix.content;
 
+import arc.audio.Sound;
 import mindustry.Vars;
 import mindustry.content.Blocks;
 import mindustry.content.Fx;
@@ -70,6 +71,7 @@ public class NevixUnits {
         }};
         
         final float R = 100f * Vars.tilesize;
+        final Sound cannonSound = UnitTypes.reign.weapons.get(0).shootSound;
         
         citadelDrone = new UnitType("citadel-drone") {{
             health = 1000f;
@@ -134,7 +136,7 @@ public class NevixUnits {
         }};
         
         citadel = new CitadelTitanUnitType("citadel") {{
-            health = 30000000;
+            health = 2300000f;
             hitSize = 240f;
             speed = 0.15f;
             canDrown = false;
@@ -145,13 +147,13 @@ public class NevixUnits {
 
             range = 75f * Vars.tilesize;
             
-            auraHealth = 250;
+            auraHealth = 400f;
             auraRechargeTime = 60f * 60f;
-            auraHealPercent = 0.01f;
+            auraHealPercent = 0.015f;
 
             droneType = citadelDrone;
-            droneCount = 2;
-            haloRadius = 150f;
+            droneCount = 5;
+            haloRadius = 90f;
             
             weapons.add(new Weapon("") {{
                 x = 100f; y = 0f;
@@ -164,11 +166,14 @@ public class NevixUnits {
                 inaccuracy = 2f;
                 shoot.shots = 2;
                 shoot.shotDelay = 6f;
-                shootSound = UnitTypes.reign.weapons.get(0).shootSound;
+                shootSound = cannonSound;
+                soundPitchMin = 0.7f;
+                soundPitchMax = 0.9f;
                 
                 bullet = new BasicBulletType(14f, 900f) {{
                     lifetime = (50f * Vars.tilesize) / 14f;
-                    width = 24f; height = 32f;
+                    width = 96f; height = 128f;
+                    hitSize = 48f;
 
                     pierce = true;
                     pierceCap = -1;
@@ -182,7 +187,15 @@ public class NevixUnits {
                     fragOnHit = false;
                     fragBullets = 3;
                     fragBullet = fragLayer(5);
-                }};
+                }
+                    @Override
+                    public void init(Bullet b) {
+                        super.init(b);
+                        cannonSound.at(b.x, b.y, 0.7f, 1f);
+                        cannonSound.at(b.x, b.y, 0.85f, 1f);
+                        cannonSound.at(b.x, b.y, 1f, 1f);
+                    }
+                };
             }});
             
             weapons.add(new Weapon("") {{
@@ -237,7 +250,7 @@ public class NevixUnits {
 
                     bullet = new PointBulletType() {{
                         damage = 600f;
-                        speed = 75f * Vars.tilesize + 10f;
+                        speed = 75f;
                         shootEffect = Fx.instShoot;
                         hitEffect = Fx.instHit;
                         smokeEffect = Fx.smokeCloud;
@@ -254,8 +267,9 @@ public class NevixUnits {
     private static BulletType fragLayer(int layersLeft) {
         return new BasicBulletType(4f, 75f) {{
             lifetime = 30f;
-            width = 7f;
-            height = 9f;
+            width = 28f;
+            height = 36f;
+            hitSize = 16f;
             despawnHit = true;
             if (layersLeft > 1) {
                 fragBullets = 3;
