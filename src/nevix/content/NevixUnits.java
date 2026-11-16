@@ -1,20 +1,28 @@
 package nevix.content;
 
+import mindustry.Vars;
 import mindustry.content.Blocks;
 import mindustry.content.Fx;
 import mindustry.entities.bullet.BasicBulletType;
+import mindustry.entities.bullet.BulletType;
+import mindustry.entities.bullet.PointBulletType;
+import mindustry.gen.Bullet;
+import mindustry.gen.Hitboxc;
 import mindustry.gen.LegsUnit;
 import mindustry.gen.MechUnit;
 import mindustry.gen.Sounds;
+import mindustry.gen.Unit;
+import mindustry.gen.UnitEntity;
 import mindustry.type.UnitType;
 import mindustry.type.Weapon;
+import nevix.ai.CitadelDroneAI;
 import nevix.ai.ReactoryAI;
-import nevix.type.unit.TitanUnitType;
+import nevix.type.unit.CitadelTitanUnitType;
 
 public class NevixUnits {
     public static UnitType
     reactory,
-    citadel;
+    citadel, citadelDrone;
     
     public static void load() {
         reactory = new UnitType("reactory") {{
@@ -59,12 +67,198 @@ public class NevixUnits {
             }});
         }};
         
-        citadel = new TitanUnitType("citadel") {{
-            health = 1;
+        final float R = 100f * Vars.tilesize;
+        
+        citadelDrone = new UnitType("citadel-drone") {{
+            health = 1000f;
+            hitSize = 16f;
+            speed = 3.5f;
+            accel = 0.08f;
+            drag = 0.04f;
+            flying = true;
+            lowAltitude = true;
+            range = 35f * Vars.tilesize;
+            maxRange = range;
+
+            targetable = false;
+            hittable = false;
+            killable = false;
+
+            hidden = true;
+            isEnemy = false;
+            useUnitCap = false;
+            playerControllable = false;
+            logicControllable = false;
+            allowedInPayloads = false;
+            singleTarget = true;
+
+            constructor = UnitEntity::create;
+            aiController = CitadelDroneAI::new;
+            
+            weapons.add(new Weapon("") {{
+                x = 0f; y = 0f;
+                mirror = false;
+                rotate = true;
+                reload = 5f;
+                inaccuracy = 3f;
+                shootSound = Sounds.shoot;
+                bullet = new BasicBulletType(14f, 90f) {{
+                    lifetime = (35f * Vars.tilesize) / 14f;
+                    pierce = true;
+                    pierceCap = 1;
+                    width = 5f; height = 9f;
+                }};
+            }});
+            
+            weapons.add(new Weapon("") {{
+                x = 7f; y = 0f;
+                mirror = true;
+                alternate = true;
+                rotate = true;
+                reload = 180f;
+                shoot.shots = 4;
+                shoot.shotDelay = 5f;
+                shootSound = Sounds.shootBig;
+                bullet = new BasicBulletType(10f, 450f) {{
+                    lifetime = (30f * Vars.tilesize) / 10f;
+                    pierce = true;
+                    pierceCap = 3;
+                    splashDamage = 300f;
+                    splashDamageRadius = 5f * Vars.tilesize;
+                    width = 8f; height = 12f;
+                    hitEffect = Fx.blastExplosion;
+                }};
+            }});
+        }};
+        
+        citadel = new CitadelTitanUnitType("citadel") {{
+            health = 30000000;
+            hitSize = 240f;
             speed = 0.15f;
             canDrown = false;
-            
             constructor = MechUnit::create;
+
+            rotateSpeed = 0.6f;
+            mechStride = 180f;
+
+            range = 75f * Vars.tilesize;
+            
+            auraHealth = 250f;
+            auraRechargeTime = 60f * 60f;
+            auraHealPercent = 0.01f;
+
+            droneType = citadelDrone;
+            droneCount = 2;
+            haloRadius = 150f;
+            
+            weapons.add(new Weapon("") {{
+                x = 100f; y = 0f;
+                mirror = true;
+                alternate = true;
+                rotate = false;
+                rotateSpeed = 2f;
+                reload = 600f;
+                shake = 10f;
+                inaccuracy = 2f;
+                shoot.shots = 2;
+                shoot.shotDelay = 6f;
+                shootSound = Sounds.largeCannon;
+                
+                bullet = new BasicBulletType(14f, 900f) {{
+                    lifetime = (50f * Vars.tilesize) / 14f;
+                    width = 24f; height = 32f;
+
+                    pierce = true;
+                    pierceCap = -1;
+                    pierceBuilding = true;
+
+                    splashDamage = 4500f;
+                    splashDamageRadius = 12f * Vars.tilesize;
+                    hitEffect = Fx.massiveExplosion;
+
+                    despawnHit = true;
+                    fragOnHit = false;
+                    fragBullets = 3;
+                    fragBullet = fragLayer(5);
+                }};
+            }});
+            
+            weapons.add(new Weapon("") {{
+                x = 0f; y = 46f;
+                mirror = false;
+                rotate = false;
+                rotateSpeed = 8f;
+                reload = 15f;
+                controllable = false;
+                autoTarget = true;
+                shootSound = Sounds.flame;
+
+                bullet = new BulletType(8f, 250f) {{
+                    lifetime = (20f * Vars.tilesize) / 8f;
+                    hitSize = 14f;
+                    pierce = true;
+                    pierceArmor = true;
+                    collidesAir = false;
+                    hittable = false;
+                    keepVelocity = false;
+                    status = StatusEffects.burning;
+                    statusDuration = 60f * 10f;
+                    shootEffect = Fx.shootSmallFlame;
+                    hitEffect = Fx.hitFlameSmall;
+                    despawnEffect = Fx.none;
+                }
+                    @Override
+                    public void hitEntity(Bullet b, Hitboxc entity, float health) {
+                        super.hitEntity(b, entity, health);
+                        if (entity instanceof Unit) {
+                            ((Unit) entity).apply(StatusEffects.melting, 60f * 3f);
+                        }
+                    }
+                };
+            }});
+            
+            float[][] snipePos = {
+                {-67f, 9f}, {-67f, -23f},
+                {-32f, -6f}, {28f, -9f},
+                {72f, 15f}, {61f, -23f}
+            };
+            for (float[] p : snipePos) {
+                weapons.add(new Weapon("") {{
+                    x = p[0]; y = p[1];
+                    mirror = false;
+                    rotate = true;
+                    rotateSpeed = 6f;
+                    reload = 60f;
+                    controllable = false;
+                    autoTarget = true;
+                    shootSound = Sounds.railgun;
+
+                    bullet = new PointBulletType() {{
+                        damage = 600f;
+                        speed = 75f * Vars.tilesize + 10f;
+                        shootEffect = Fx.instShoot;
+                        hitEffect = Fx.instHit;
+                        smokeEffect = Fx.smokeCloud;
+                        trailEffect = Fx.instTrail;
+                        despawnEffect = Fx.instBomb;
+                        trailSpacing = 20f;
+                        hitShake = 6f;
+                    }};
+                }});
+            }
+        }};
+    }
+    
+    private static BulletType fragLayer(int layersLeft) {
+        return new BasicBulletType(4f, 75f) {{
+            lifetime = 30f;
+            width = 7f;
+            height = 9f;
+            despawnHit = true;
+            if (layersLeft > 1) {
+                fragBullets = 3;
+                fragBullet = fragLayer(layersLeft - 1);
+            }
         }};
     }
 }
