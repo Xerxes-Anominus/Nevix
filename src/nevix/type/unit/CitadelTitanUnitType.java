@@ -1,5 +1,6 @@
 package nevix.type.unit;
 
+import arc.graphics.Blending;
 import arc.graphics.Color;
 import arc.graphics.g2d.Draw;
 import arc.graphics.g2d.Fill;
@@ -24,12 +25,18 @@ public class CitadelTitanUnitType extends TitanUnitType {
     public UnitType droneType;
     public int droneCount;
     
+    public float auraScale = 0.6f;
+    
     protected Color[] haloColors = {
         Color.valueOf("ff7a1a"),
         Color.valueOf("ffd43b"),
         Color.valueOf("fff6c2"),
         Color.white
     };
+    
+    protected float[]
+    haloRatios = {1f, 0.72f, 0.45f, 0.2f},
+    haloAlphas = {0.55f, 0.5f, 0.45f, 0.4f};
     
     protected final ObjectMap<Unit, Seq<Unit>> drones = new ObjectMap<>();
     
@@ -81,44 +88,50 @@ public class CitadelTitanUnitType extends TitanUnitType {
         cenY = unit.y,
         rot = unit.rotation;
         
+        Draw.blend(Blending.additive);
+        
         for(int i = 0; i < 4; i++) {
             Draw.z(Layer.flyingUnit + 1 + i);
-            Draw.color(haloColors[i]);
+            Draw.color(haloColors[i], haloAlphas[i]);
             
-            Fill.circle(cenX, cenY, 90f - i * 2);
+            Fill.circle(cenX, cenY, 90f * auraScale * haloRatios[i]);
         }
         
         for(int i = 0; i < 2; i++) {
             for(int j = 0; j < 4; j++) {
-                Draw.z(Layer.flyingUnitLow+ 1 + j);
-                Draw.color(haloColors[j]);
+                Draw.z(Layer.flyingUnitLow + 1 + j);
+                Draw.color(haloColors[j], haloAlphas[j]);
                 
                 float
-                triX = cenX + 90f * Mathf.cosDeg(rot + angles[i]),
-                triY = cenY + 90f * Mathf.sinDeg(rot + angles[i]);
+                triX = cenX + 90f * auraScale * Mathf.cosDeg(rot + angles[i]),
+                triY = cenY + 90f * auraScale * Mathf.sinDeg(rot + angles[i]);
                 
-                Drawf.tri(triX, triY, 45f, 135f - 1.5f * j, rot + angles[i]);
+                Drawf.tri(triX, triY, 45f * auraScale * haloRatios[j], 135f * auraScale * haloRatios[j], rot + angles[i]);
             }
         }
         
+        Draw.z(Layer.flyingUnit + 1);
         for(int i = 0; i < 4; i++) {
-            Lines.stroke(3f - 0.3f * i, haloColors[i]);
-            Lines.circle(cenX, cenY, 180f);
+            Lines.stroke((3f - 0.3f * i) * auraScale, haloColors[i]);
+            Draw.alpha(haloAlphas[i]);
+            Lines.circle(cenX, cenY, 180f * auraScale);
         }
         
         for(int i = 0; i < 4; i++) {
             for(int j = 0; j < 4; j++) {
-                Draw.z(Layer.flyingUnit+ 1 + j);
-                Draw.color(haloColors[j]);
+                Draw.z(Layer.flyingUnit + 1 + j);
+                Draw.color(haloColors[j], haloAlphas[j]);
                 
                 float
                 triR = (Time.time + 10 * unit.id + triRot[i]) % 360f,
-                triX = cenX + 185f * Mathf.cosDeg(triR),
-                triY = cenY + 185f * Mathf.sinDeg(triR);
+                triX = cenX + 185f * auraScale * Mathf.cosDeg(triR),
+                triY = cenY + 185f * auraScale * Mathf.sinDeg(triR);
                 
-                Drawf.tri(triX, triY, 60f - 1f * j, 60f - 1f * j, triR);
+                Drawf.tri(triX, triY, 60f * auraScale * haloRatios[j], 60f * auraScale * haloRatios[j], triR);
             }
         }
+        
+        Draw.blend();
         Draw.reset();
     }
 }
