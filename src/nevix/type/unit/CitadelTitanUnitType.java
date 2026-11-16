@@ -71,6 +71,10 @@ public class CitadelTitanUnitType extends TitanUnitType {
         drawAura(unit);
     }
     
+    private final float[]
+    angles = {90f, 270f},
+    triRot = {90f, 180f, 270f, 360f};
+    
     protected void drawAura(Unit unit) {
         float
         cenX = unit.x,
@@ -84,9 +88,8 @@ public class CitadelTitanUnitType extends TitanUnitType {
             Fill.circle(cenX, cenY, 90f - i * 2);
         }
         
-        float[] angles = {90f, 270f};
         for(int i = 0; i < 2; i++) {
-            for(int j = 0; i < 4; j++) {
+            for(int j = 0; j < 4; j++) {
                 Draw.z(Layer.flyingUnitLow+ 1 + j);
                 Draw.color(haloColors[j]);
                 
@@ -94,7 +97,7 @@ public class CitadelTitanUnitType extends TitanUnitType {
                 triX = cenX + 90f * Mathf.cosDeg(rot + angles[i]),
                 triY = cenY + 90f * Mathf.sinDeg(rot + angles[i]);
                 
-                Drawf.tri(triX, triY, 45f, 135f - 1.5f * j, angles[i]);
+                Drawf.tri(triX, triY, 45f, 135f - 1.5f * j, rot + angles[i]);
             }
         }
         
@@ -103,18 +106,17 @@ public class CitadelTitanUnitType extends TitanUnitType {
             Lines.circle(cenX, cenY, 180f);
         }
         
-        float[] triRot = {90f, 180f, 270f, 360f};
         for(int i = 0; i < 4; i++) {
             for(int j = 0; j < 4; j++) {
                 Draw.z(Layer.flyingUnit+ 1 + j);
                 Draw.color(haloColors[j]);
                 
                 float
-                triR = (Time.time + 10 * unit.id + triRot[j]) % 360f,
+                triR = (Time.time + 10 * unit.id + triRot[i]) % 360f,
                 triX = cenX + 185f * Mathf.cosDeg(triR),
                 triY = cenY + 185f * Mathf.sinDeg(triR);
                 
-                Drawf.tri(triX, triY, 60f - 1f * j, 60f - 1f * j, triRot[j]);
+                Drawf.tri(triX, triY, 60f - 1f * j, 60f - 1f * j, triR);
             }
         }
         Draw.reset();
