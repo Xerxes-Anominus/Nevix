@@ -153,7 +153,6 @@ public class NevixUnits {
 
             droneType = citadelDrone;
             droneCount = 5;
-            haloRadius = 90f;
             
             weapons.add(new Weapon("") {{
                 x = 100f; y = 0f;
