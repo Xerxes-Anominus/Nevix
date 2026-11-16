@@ -25,7 +25,7 @@ public class CitadelTitanUnitType extends TitanUnitType {
     public UnitType droneType;
     public int droneCount;
     
-    public float auraScale = 0.6f;
+    public float auraScale = 0.4f;
     
     protected Color[] haloColors = {
         Color.valueOf("ff7a1a"),
@@ -35,8 +35,8 @@ public class CitadelTitanUnitType extends TitanUnitType {
     };
     
     protected float[]
-    haloRatios = {1f, 0.72f, 0.45f, 0.2f},
-    haloAlphas = {0.55f, 0.5f, 0.45f, 0.4f};
+    haloRatios = {1f, 0.85f, 0.7f, 0.55f},
+    haloAlphas = {0.6f, 0.7f, 0.8f, 0.9f};
     
     protected final ObjectMap<Unit, Seq<Unit>> drones = new ObjectMap<>();
     
