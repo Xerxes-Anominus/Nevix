@@ -63,6 +63,26 @@ public enum NevixDifficulty {
 
         return res.isEmpty() ? Core.bundle.get("difficulty.nomodifiers") : res;
     }
+    
+    public boolean forcesDarkness() {
+        return ordinal() >= hard.ordinal();
+    }
+    
+    public float minDark() {
+        return switch (this) {
+            case eradication -> 0.6f;
+            case extinction -> 0.75f;
+            default -> 0f;
+        };
+    }
+    
+    public float maxDark() {
+        return switch (this) {
+            case eradication -> 0.85f;
+            case extinction -> 0.95f;
+            default -> 1f;
+        };
+    }
 
     public String localized() {
         return Core.bundle.get("difficulty." + name());
