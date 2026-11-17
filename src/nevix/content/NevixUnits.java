@@ -226,10 +226,10 @@ public class NevixUnits {
                     keepVelocity = false;
                     status = StatusEffects.burning;
                     statusDuration = 60f * 10f;
-                    shootEffect = new Effect(45f, 80f, e -> {
+                    shootEffect = new Effect(60f, 80f, e -> {
                         Draw.color(Pal.lightFlame, Pal.darkFlame, Color.gray, e.fin());
                         
-                        Angles.randLenVectors(e.id, 12, e.finpow() * 60f, e.rotation, 10f, (x, y) -> {
+                        Angles.randLenVectors(e.id, 12, e.finpow() * 60f, e.rotation, 40f, (x, y) -> {
                             Fill.circle(e.x + x, e.y + y, 0.65f + e.fout() * 1.5f);
                         });
                     }).followParent(false);
