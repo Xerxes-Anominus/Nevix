@@ -14,6 +14,7 @@ import mindustry.game.EventType.Trigger;
 import mindustry.game.EventType.WorldLoadEvent;
 import mindustry.gen.Call;
 import mindustry.net.NetConnection;
+import nevix.game.NevixDifficulty;
 
 import static mindustry.Vars.headless;
 import static mindustry.Vars.net;
@@ -84,8 +85,14 @@ public final class DayNightCycle {
             
             if (net.client() || !state.isGame()) return;
             
-            if (Core.settings.getBool("map-darkening", true)) {
-                float dark = (1f - daylight()) * maxDark;
+            NevixDifficulty diff = state.isCampaign() ? NevixDifficulty.current() : null;
+            boolean forced = diff != null && diff.forcesDarkness();
+
+            if (forced || Core.settings.getBool("map-darkening", true)) {
+                float night = 1f - daylight();
+                float dark = forced
+                    ? Mathf.lerp(diff.minDark(), diff.maxDark(), night)
+                    : night * maxDark;
                 state.rules.lighting = dark > 0.01f;
                 state.rules.ambientLight.set(0.02f, 0.03f, 0.10f, dark);
                 applied = true;
