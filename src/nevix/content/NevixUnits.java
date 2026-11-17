@@ -1,11 +1,16 @@
 package nevix.content;
 
 import arc.audio.Sound;
+import arc.graphics.Color;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.Fill;
+import arc.math.Angles;
 import mindustry.Vars;
 import mindustry.content.Blocks;
 import mindustry.content.Fx;
 import mindustry.content.StatusEffects;
 import mindustry.content.UnitTypes;
+import mindustry.entities.Effect;
 import mindustry.entities.bullet.BasicBulletType;
 import mindustry.entities.bullet.BulletType;
 import mindustry.entities.bullet.PointBulletType;
@@ -16,6 +21,7 @@ import mindustry.gen.MechUnit;
 import mindustry.gen.Sounds;
 import mindustry.gen.Unit;
 import mindustry.gen.UnitEntity;
+import mindustry.graphics.Pal;
 import mindustry.type.UnitType;
 import mindustry.type.Weapon;
 import nevix.ai.CitadelDroneAI;
@@ -26,6 +32,9 @@ public class NevixUnits {
     public static UnitType
     reactory,
     citadel, citadelDrone;
+    
+    public static Effect
+    shootCitadelFlame;
     
     public static void load() {
         reactory = new UnitType("reactory") {{
@@ -217,7 +226,13 @@ public class NevixUnits {
                     keepVelocity = false;
                     status = StatusEffects.burning;
                     statusDuration = 60f * 10f;
-                    shootEffect = Fx.shootSmallFlame;
+                    shootEffect = new Effect(45f, 80f, e -> {
+                        Draw.color(Pal.lightFlame, Pal.darkFlame, Color.gray, e.fin());
+                        
+                        Angles.randLenVectors(e.id, 12, e.finpow() * 60f, e.rotation, 10f, (x, y) -> {
+                            Fill.circle(e.x + x, e.y + y, 0.65f + e.fout() * 1.5f);
+                        });
+                    }).followParent(false);
                     hitEffect = Fx.hitFlameSmall;
                     despawnEffect = Fx.none;
                 }
