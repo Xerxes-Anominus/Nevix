@@ -395,7 +395,7 @@ public class SwirdyTurret extends NevixTurret {
         Draw.z(z);
     }
     
-    public static void drawHalo(SwirdyPalette p, float x, float y, float time, float fade){
+    public static void drawHalo(SwirdyPalette p, float x, float y, float rot, float time, float fade){
         final float R = tilesize * 0.5f;
         final float spike = tilesize * 0.5f;
 
@@ -408,7 +408,7 @@ public class SwirdyTurret extends NevixTurret {
         
         Draw.color(p.light, 0.95f * fade);
         for(int k = 0; k < 4; k++){
-            float a = k * 90f;
+            float a = rot + k * 90f;
             Drawf.tri(x + Angles.trnsx(a, R - 1f), y + Angles.trnsy(a, R - 1f), 2f, spike + 1f, a);
         }
         
@@ -1356,7 +1356,7 @@ public class SwirdyTurret extends NevixTurret {
                 if(ha != null){
                     float hx = x - Angles.trnsx(rotation, tilesize * 0.5f);
                     float hy = y - Angles.trnsy(rotation, tilesize * 0.5f);
-                    drawHalo(palette(ha.pal), hx, hy, Time.time, haloFade);
+                    drawHalo(palette(ha.pal), hx, hy, rotation, Time.time, haloFade);
                 }
             }
             if(skillActive && skillCharging && chargeProgress > 0f && skillAmmo != null){
