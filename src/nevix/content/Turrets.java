@@ -52,7 +52,26 @@ public final class Turrets {
         }};
         
         swirdy = new SwirdyTurret("swirdy") {{
-            requirements(Category.turret, ItemStack.with(Items.copper, 1));
+            requirements(Category.turret, ItemStack.with(Items.copper, 200, Items.lead, 180, Items.graphite, 80));
+            
+            shootWarmupSpeed = 0.03f;
+
+            drawer = new DrawTurret("reinforced-") {{
+                parts.addAll(
+                new RegionPart("-wing-r") {{
+                    mirror = false;
+                    under = false;
+                    moveRot = -15f;
+                    progress = PartProgress.warmup;
+                }},
+                new RegionPart("-wing-l") {{
+                    mirror = false;
+                    under = false;
+                    moveRot = 15f;
+                    progress = PartProgress.warmup;
+                }}
+                );
+            }};
         }};
     }
 }
