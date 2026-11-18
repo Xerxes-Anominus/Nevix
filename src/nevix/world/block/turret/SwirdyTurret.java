@@ -23,6 +23,7 @@ import mindustry.entities.bullet.BulletType;
 import mindustry.gen.Building;
 import mindustry.gen.Bullet;
 import mindustry.gen.Hitboxc;
+import mindustry.gen.Posc;
 import mindustry.gen.Teamc;
 import mindustry.gen.Unit;
 import mindustry.graphics.Drawf;
@@ -917,7 +918,7 @@ public class SwirdyTurret extends NevixTurret {
          * - Đánh xa (kể cả bản đã đổi): không còn địch thì tụ lực lại từ đầu.
          */
         protected void updateCharge(float dt){
-            Teamc en = skillMelee ? closestMeleeEnemy() : target;
+            Posc en = skillMelee ? closestMeleeEnemy() : target;
 
             if(skillMelee && en == null){
                 skillMelee = false;
