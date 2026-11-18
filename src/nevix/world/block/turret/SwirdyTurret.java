@@ -18,6 +18,7 @@ import arc.util.Tmp;
 import arc.util.io.Reads;
 import arc.util.io.Writes;
 import mindustry.content.Fx;
+import mindustry.Vars;
 import mindustry.content.Items;
 import mindustry.entities.Effect;
 import mindustry.entities.Units;
@@ -34,6 +35,7 @@ import mindustry.gen.Unit;
 import mindustry.graphics.Drawf;
 import mindustry.graphics.Layer;
 import mindustry.graphics.Pal;
+import mindustry.type.Item;
 import mindustry.type.ItemStack;
 import mindustry.ui.Bar;
 import mindustry.world.meta.Stat;
@@ -392,6 +394,37 @@ public class SwirdyTurret extends NevixTurret {
         Drawf.light(x, y, 55f * fr, p.light, 0.8f * fr);
         Draw.z(z);
     }
+    
+    public static void drawHalo(SwirdyPalette p, float x, float y, float time, float fade){
+        final float R = tilesize;
+        final float spike = tilesize * 0.5f;
+
+        float z = Draw.z();
+        Draw.z(Layer.bullet + 2f);
+        Draw.blend(Blending.additive);
+        
+        Draw.color(p.mid, 0.9f * fade);
+        Fill.circle(x, y, R);
+        
+        Draw.color(p.light, 0.95f * fade);
+        for(int k = 0; k < 4; k++){
+            float a = k * 90f;
+            Drawf.tri(x + Angles.trnsx(a, R - 1f), y + Angles.trnsy(a, R - 1f), 3.5f, spike + 1f, a);
+        }
+        
+        float orbit = R + spike + 0.5f;
+        float spin = 45f - time * 1.6f;
+        Draw.color(p.core, 0.9f * fade);
+        for(int k = 0; k < 4; k++){
+            float a = spin + k * 90f;
+            Drawf.tri(x + Angles.trnsx(a, orbit), y + Angles.trnsy(a, orbit), 2f, spike * 0.75f, a);
+        }
+
+        Draw.blend();
+        Draw.reset();
+        Drawf.light(x, y, 28f, p.light, 0.6f * fade);
+        Draw.z(z);
+    }
 
     public static final Effect[] starHitFxs = new Effect[palettes.length];
 
@@ -608,6 +641,14 @@ public class SwirdyTurret extends NevixTurret {
         return w;
     }
     
+    public static final String promotionStarName = "nevix-promotion-star";
+
+    protected static Item promotionStar(){
+        Item i = Vars.content.item(promotionStarName);
+        if(i == null) throw new IllegalStateException("Swirdy: không tìm thấy item '" + promotionStarName + "' (Promotion Star)");
+        return i;
+    }
+
     public static final String netChannel = "swirdy";
     protected static final int netSlash = 0, netLine = 1, netWave = 2, netCharge = 3, netState = 4, netAmmo = 5, netHit = 6;
     private static boolean netRegistered;
@@ -652,24 +693,24 @@ public class SwirdyTurret extends NevixTurret {
     }
 
     public void upgradeBranch(){
-        swirdy_melee = addUpgrade("swirdy-melee", "", ItemStack.with(Items.copper, 1), (SwirdyTurretBuild build) -> build.meleeStateUnlock = true, (SwirdyTurretBuild build) -> build.meleeStateUnlock = false);
-        swirdy_melee_reload0 = addUpgrade("swirdy-melee-reload-0", "", ItemStack.with(Items.copper, 1), (SwirdyTurretBuild build) -> build.meleeReloadTier++, (SwirdyTurretBuild build) -> build.meleeReloadTier = 0).requires(swirdy_melee);
-        swirdy_melee_reload1 = addUpgrade("swirdy-melee-reload-1", "", ItemStack.with(Items.copper, 1), (SwirdyTurretBuild build) -> build.meleeReloadTier++, (SwirdyTurretBuild build) -> build.meleeReloadTier = 0).requires(swirdy_melee).levelAfter(swirdy_melee_reload0);
-        swirdy_melee_reload2 = addUpgrade("swirdy-melee-reload-2", "", ItemStack.with(Items.copper, 1), (SwirdyTurretBuild build) -> build.meleeReloadTier++, (SwirdyTurretBuild build) -> build.meleeReloadTier = 0).requires(swirdy_melee).levelAfter(swirdy_melee_reload1);
-        swirdy_melee_tier0 = addUpgrade("swirdy-melee-tier-0", "", ItemStack.with(Items.copper, 1), (SwirdyTurretBuild build) -> build.meleeTier++, (SwirdyTurretBuild build) -> build.meleeTier = 0).requires(swirdy_melee);
-        swirdy_melee_tier1 = addUpgrade("swirdy-melee-tier-1", "", ItemStack.with(Items.copper, 1), (SwirdyTurretBuild build) -> build.meleeTier++, (SwirdyTurretBuild build) -> build.meleeTier = 0).requires(swirdy_melee).levelAfter(swirdy_melee_tier0);
-        swirdy_melee_tier2 = addUpgrade("swirdy-melee-tier-2", "", ItemStack.with(Items.copper, 1), (SwirdyTurretBuild build) -> build.meleeTier++, (SwirdyTurretBuild build) -> build.meleeTier = 0).requires(swirdy_melee).levelAfter(swirdy_melee_tier1);
-        swirdy_range_tier0 = addUpgrade("swirdy-range-tier-0", "", ItemStack.with(Items.copper, 1), (SwirdyTurretBuild build) -> build.rangeTier++, (SwirdyTurretBuild build) -> build.rangeTier = 0);
-        swirdy_range_tier1 = addUpgrade("swirdy-range-tier-1", "", ItemStack.with(Items.copper, 1), (SwirdyTurretBuild build) -> build.rangeTier++, (SwirdyTurretBuild build) -> build.rangeTier = 0).levelAfter(swirdy_range_tier0);
-        swirdy_range_tier2 = addUpgrade("swirdy-range-tier-2", "", ItemStack.with(Items.copper, 1), (SwirdyTurretBuild build) -> build.rangeTier++, (SwirdyTurretBuild build) -> build.rangeTier = 0).levelAfter(swirdy_range_tier1);
-        swirdy_reload_tier0 = addUpgrade("swirdy-reload-tier-0", "", ItemStack.with(Items.copper, 1), (SwirdyTurretBuild build) -> build.reloadTier++, (SwirdyTurretBuild build) -> build.reloadTier = 0);
-        swirdy_reload_tier1 = addUpgrade("swirdy-reload-tier-1", "", ItemStack.with(Items.copper, 1), (SwirdyTurretBuild build) -> build.reloadTier++, (SwirdyTurretBuild build) -> build.reloadTier = 0).levelAfter(swirdy_reload_tier0);
-        swirdy_reload_tier2 = addUpgrade("swirdy-reload-tier-2", "", ItemStack.with(Items.copper, 1), (SwirdyTurretBuild build) -> build.reloadTier++, (SwirdyTurretBuild build) -> build.reloadTier = 0).levelAfter(swirdy_reload_tier1);
-        swirdy_tier0 = addUpgrade("swirdy-tier-0", "", ItemStack.with(Items.copper, 1), (SwirdyTurretBuild build) -> build.Tier++, (SwirdyTurretBuild build) -> build.Tier = 0);
-        swirdy_tier1 = addUpgrade("swirdy-tier-1", "", ItemStack.with(Items.copper, 1), (SwirdyTurretBuild build) -> build.Tier++, (SwirdyTurretBuild build) -> build.Tier = 0).levelAfter(swirdy_tier0);
-        swirdy_tier2 = addUpgrade("swirdy-tier-2", "", ItemStack.with(Items.copper, 1), (SwirdyTurretBuild build) -> build.Tier++, (SwirdyTurretBuild build) -> build.Tier = 0).levelAfter(swirdy_tier1);
-        swirdy_melee_passive_skill = addUpgrade("swirdy-melee-passive-skill", "", ItemStack.with(Items.copper, 1), (SwirdyTurretBuild build) -> build.meleeSkillUnlock = true, (SwirdyTurretBuild build) -> build.meleeSkillUnlock = false).requires(swirdy_melee, swirdy_melee_tier0);
-        swirdy_passive_skill = addUpgrade("swirdy-passive-skill", "", ItemStack.with(Items.copper, 1), (SwirdyTurretBuild build) -> build.skillUnlock = true, (SwirdyTurretBuild build) -> build.skillUnlock = false);
+        swirdy_melee = addUpgrade("swirdy-melee", "", ItemStack.with(Items.copper, 100, Items.lead, 80, Items.graphite, 60, Items.silicon, 50, Items.titanium, 60), (SwirdyTurretBuild build) -> build.meleeStateUnlock = true, (SwirdyTurretBuild build) -> build.meleeStateUnlock = false);
+        swirdy_melee_reload0 = addUpgrade("swirdy-melee-reload-0", "", ItemStack.with(Items.copper, 120, Items.lead, 80, Items.graphite, 80), (SwirdyTurretBuild build) -> build.meleeReloadTier++, (SwirdyTurretBuild build) -> build.meleeReloadTier = 0).requires(swirdy_melee);
+        swirdy_melee_reload1 = addUpgrade("swirdy-melee-reload-1", "", ItemStack.with(Items.lead, 120, Items.graphite, 100, Items.metaglass, 60, Items.silicon, 80, Items.titanium, 80), (SwirdyTurretBuild build) -> build.meleeReloadTier++, (SwirdyTurretBuild build) -> build.meleeReloadTier = 0).requires(swirdy_melee).levelAfter(swirdy_melee_reload0);
+        swirdy_melee_reload2 = addUpgrade("swirdy-melee-reload-2", "", ItemStack.with(Items.graphite, 150, Items.silicon, 120, Items.titanium, 150, Items.thorium, 80, Items.plastanium, 60), (SwirdyTurretBuild build) -> build.meleeReloadTier++, (SwirdyTurretBuild build) -> build.meleeReloadTier = 0).requires(swirdy_melee).levelAfter(swirdy_melee_reload1);
+        swirdy_melee_tier0 = addUpgrade("swirdy-melee-tier-0", "", ItemStack.with(Items.copper, 150, Items.graphite, 120, Items.silicon, 100, Items.titanium, 100), (SwirdyTurretBuild build) -> build.meleeTier++, (SwirdyTurretBuild build) -> build.meleeTier = 0).requires(swirdy_melee);
+        swirdy_melee_tier1 = addUpgrade("swirdy-melee-tier-1", "", ItemStack.with(Items.graphite, 150, Items.silicon, 150, Items.titanium, 200, Items.thorium, 100), (SwirdyTurretBuild build) -> build.meleeTier++, (SwirdyTurretBuild build) -> build.meleeTier = 0).requires(swirdy_melee).levelAfter(swirdy_melee_tier0);
+        swirdy_melee_tier2 = addUpgrade("swirdy-melee-tier-2", "", ItemStack.with(Items.silicon, 200, Items.titanium, 300, Items.thorium, 200, Items.plastanium, 120), (SwirdyTurretBuild build) -> build.meleeTier++, (SwirdyTurretBuild build) -> build.meleeTier = 0).requires(swirdy_melee).levelAfter(swirdy_melee_tier1);
+        swirdy_range_tier0 = addUpgrade("swirdy-range-tier-0", "", ItemStack.with(Items.copper, 100, Items.lead, 100, Items.graphite, 100), (SwirdyTurretBuild build) -> build.rangeTier++, (SwirdyTurretBuild build) -> build.rangeTier = 0);
+        swirdy_range_tier1 = addUpgrade("swirdy-range-tier-1", "", ItemStack.with(Items.lead, 100, Items.graphite, 120, Items.silicon, 80, Items.titanium, 100), (SwirdyTurretBuild build) -> build.rangeTier++, (SwirdyTurretBuild build) -> build.rangeTier = 0).levelAfter(swirdy_range_tier0);
+        swirdy_range_tier2 = addUpgrade("swirdy-range-tier-2", "", ItemStack.with(Items.graphite, 150, Items.silicon, 120, Items.titanium, 250), (SwirdyTurretBuild build) -> build.rangeTier++, (SwirdyTurretBuild build) -> build.rangeTier = 0).levelAfter(swirdy_range_tier1);
+        swirdy_reload_tier0 = addUpgrade("swirdy-reload-tier-0", "", ItemStack.with(Items.copper, 100, Items.lead, 80, Items.graphite, 120), (SwirdyTurretBuild build) -> build.reloadTier++, (SwirdyTurretBuild build) -> build.reloadTier = 0);
+        swirdy_reload_tier1 = addUpgrade("swirdy-reload-tier-1", "", ItemStack.with(Items.lead, 100, Items.graphite, 120, Items.silicon, 80, Items.titanium, 100), (SwirdyTurretBuild build) -> build.reloadTier++, (SwirdyTurretBuild build) -> build.reloadTier = 0).levelAfter(swirdy_reload_tier0);
+        swirdy_reload_tier2 = addUpgrade("swirdy-reload-tier-2", "", ItemStack.with(Items.graphite, 150, Items.silicon, 120, Items.titanium, 250), (SwirdyTurretBuild build) -> build.reloadTier++, (SwirdyTurretBuild build) -> build.reloadTier = 0).levelAfter(swirdy_reload_tier1);
+        swirdy_tier0 = addUpgrade("swirdy-tier-0", "", ItemStack.with(Items.copper, 150, Items.lead, 100, Items.graphite, 150), (SwirdyTurretBuild build) -> build.Tier++, (SwirdyTurretBuild build) -> build.Tier = 0);
+        swirdy_tier1 = addUpgrade("swirdy-tier-1", "", ItemStack.with(Items.graphite, 150, Items.silicon, 100, Items.titanium, 150), (SwirdyTurretBuild build) -> build.Tier++, (SwirdyTurretBuild build) -> build.Tier = 0).levelAfter(swirdy_tier0);
+        swirdy_tier2 = addUpgrade("swirdy-tier-2", "", ItemStack.with(Items.graphite, 150, Items.silicon, 150, Items.titanium, 250, Items.thorium, 150), (SwirdyTurretBuild build) -> build.Tier++, (SwirdyTurretBuild build) -> build.Tier = 0).levelAfter(swirdy_tier1);
+        swirdy_melee_passive_skill = addUpgrade("swirdy-melee-passive-skill", "", ItemStack.with(promotionStar(), 5, Items.silicon, 200, Items.titanium, 250, Items.thorium, 150, Items.plastanium, 100), (SwirdyTurretBuild build) -> build.meleeSkillUnlock = true, (SwirdyTurretBuild build) -> build.meleeSkillUnlock = false).requires(swirdy_melee, swirdy_melee_tier0);
+        swirdy_passive_skill = addUpgrade("swirdy-passive-skill", "", ItemStack.with(promotionStar(), 5, Items.silicon, 200, Items.titanium, 250, Items.thorium, 150, Items.plastanium, 100), (SwirdyTurretBuild build) -> build.skillUnlock = true, (SwirdyTurretBuild build) -> build.skillUnlock = false);
     }
 
     public class SwirdyTurretBuild extends NevixTurretBuild {
@@ -852,6 +893,7 @@ public class SwirdyTurret extends NevixTurret {
         @Override
         public void updateTile(){
             refreshTimer += Time.delta;
+            haloFade = Mathf.lerpDelta(haloFade, target != null ? 1f : 0f, 0.12f);
             if(refreshTimer >= 30f){
                 refreshTimer = 0f;
                 refreshUpgrades();
@@ -1304,9 +1346,19 @@ public class SwirdyTurret extends NevixTurret {
             endSkill();
         }
 
+        protected float haloFade;
+
         @Override
         public void draw(){
             super.draw();
+            if(haloFade > 0.01f){
+                SwirdyWave ha = curAmmo();
+                if(ha != null){
+                    float hx = x - Angles.trnsx(rotation, tilesize * 0.5f);
+                    float hy = y - Angles.trnsy(rotation, tilesize * 0.5f);
+                    drawHalo(palette(ha.pal), hx, hy, Time.time, haloFade);
+                }
+            }
             if(skillActive && skillCharging && chargeProgress > 0f && skillAmmo != null){
                 drawCharge(palette(skillAmmo.pal), x, y, skillBase, Mathf.clamp(chargeProgress / chargeNeed));
             }
