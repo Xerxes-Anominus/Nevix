@@ -39,5 +39,13 @@ public class NevixStat {
     markInterval = new Stat("mark-interval"),
     markSplash = new Stat("mark-splash"),
 
-    pierce = new Stat("pierce");
+    pierce = new Stat("pierce"),
+    
+    meleeRange = new Stat("melee-range"),
+    meleeReload = new Stat("melee-reload"),
+    meleeDamage = new Stat("melee-damage"),
+    bonusSlashChance = new Stat("bonus-slash-chance"),
+    meleeLifesteal = new Stat("melee-lifesteal"),
+    skillCost = new Stat("skill-cost"),
+    finalWaveChance = new Stat("final-wave-chance");
 }
