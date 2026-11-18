@@ -41,6 +41,9 @@ public class SwirdyTurret extends NevixTurret {
     /** Tầm đánh xa mặc định (tile) và tầm cận chiến (tile). */
     public float rangedTiles = 23f, meleeTiles = 9f;
 
+    /** Thời gian tụ lực (tick) trước đòn cuối của kĩ năng: tầm xa 45 tick, cận chiến 30 tick. */
+    public float rangedChargeTicks = 45f, meleeChargeTicks = 30f;
+
     /** Tỉ lệ hồi máu theo sát thương gây ra bởi đòn cận chiến. */
     public float meleeLifesteal = 0.02f;
 
