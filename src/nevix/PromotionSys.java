@@ -28,7 +28,7 @@ public class PromotionSys {
             var core = b.team.core();
             if(core == null) return;
 
-            int amount = Mathf.random(1, 3);
+            int amount = Mathf.random(0, 3);
             amount = Math.min(amount, core.storageCapacity - core.items.get(promotionStar));
             if(amount > 0) core.items.add(promotionStar, amount);
         });
