@@ -9,6 +9,7 @@ import mindustry.world.draw.DrawTurret;
 import nevix.world.block.turret.BerserkerTurret;
 import nevix.world.block.turret.MarkerTurret;
 import nevix.world.block.turret.SpinupTurret;
+import nevix.world.block.turret.SwirdyTurret;
 import nevix.world.block.turret.ZoenTurret;
 
 public final class Turrets {
@@ -16,7 +17,7 @@ public final class Turrets {
 
     public static Block
     // Beta 0.1s Bros:))
-    spinup, berserker, marker, zoen;
+    spinup, berserker, marker, zoen, swirdy;
 
     public static void load() {
         spinup = new SpinupTurret("spinup") {{
@@ -48,6 +49,10 @@ public final class Turrets {
         
         zoen = new ZoenTurret("zoen") {{
             requirements(Category.turret, ItemStack.with(Items.copper, 20));
+        }};
+        
+        swirdy = new SwirdyTurret("swirdy") {{
+            requirements(Category.turret, ItemStack.with(Items.copper, 1));
         }};
     }
 }
