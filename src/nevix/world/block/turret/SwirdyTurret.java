@@ -36,16 +36,13 @@ import static mindustry.Vars.indexer;
 import static mindustry.Vars.tilesize;
 
 public class SwirdyTurret extends NevixTurret {
-    public static final int skillCost = 50;
+    public static final int skillCost = 100;
 
     /** Tầm đánh xa mặc định (tile) và tầm cận chiến (tile). */
     public float rangedTiles = 23f, meleeTiles = 9f;
 
     /** Tỉ lệ hồi máu theo sát thương gây ra bởi đòn cận chiến. */
     public float meleeLifesteal = 0.02f;
-
-    /** Thời gian tụ lực (tick) của đòn cuối kĩ năng: cận chiến / đánh xa. */
-    public float meleeChargeTicks = 30f, rangedChargeTicks = 45f;
 
     /** Ba loại đạn: chì (tím), titanium (xanh), thorium (hồng đỏ). */
     public SwirdyWave leadAmmo, titaniumAmmo, thoriumAmmo;
@@ -70,8 +67,6 @@ public class SwirdyTurret extends NevixTurret {
         new SwirdyPalette("2D6BFF", "6FD0FF", "FFFFFF", "9FE3FF", "FFFFFF", "7CC8FF"), // 1: titanium - xanh
         new SwirdyPalette("D81B4A", "FF6FA8", "FFE9F0", "FF4466", "FFB0C8", "FF6A8E")  // 2: thorium - hồng/đỏ
     };
-
-    private static final Color GOLD = Color.valueOf("FFE07D");
 
     public static SwirdyPalette palette(int i){
         return palettes[Mathf.clamp(i, 0, palettes.length - 1)];
@@ -148,37 +143,40 @@ public class SwirdyTurret extends NevixTurret {
         return y + Angles.trnsy(ang, f) + Angles.trnsy(ang + 90f, s);
     }
 
-    /**
-     * Vẽ một thanh kiếm thật: chuôi, chắn kiếm (guard), thân kiếm có hai mặt sáng/tối,
-     * sống kiếm sáng và mũi nhọn. (x, y) là vị trí chắn kiếm (tay cầm), kiếm chỉ về hướng ang.
-     * len là độ dài lưỡi.
-     */
-    public static void drawSword(float x, float y, float ang, float len, float fade, SwirdyPalette p){
-        if(fade <= 0.01f) return;
-        float w = len * 0.085f;       // nửa bề rộng chân lưỡi
-        float grip = len * 0.22f;     // chiều dài chuôi
-        float shoulder = len * 0.84f; // chỗ lưỡi bắt đầu thu nhọn
-        float tipW = w * 0.72f;
+    /** Kích thước kiếm cố định cho mọi loại đạn: cao 2 tile (tổng chiều dài), rộng 1 tile (chắn kiếm). */
+    public static final float swordLength = 2f * tilesize, swordWidth = 1f * tilesize;
 
-        // Hào quang quanh lưỡi
-        float gw = w * 2.3f;
+    /**
+     * Thanh kiếm mảnh, mọi chi tiết cùng một tông màu của bảng màu đạn.
+     * (x, y) là vị trí chắn kiếm; lưỡi chỉ về hướng ang, chuôi nằm phía sau.
+     */
+    public static void drawSword(float x, float y, float ang, float fade, SwirdyPalette p){
+        if(fade <= 0.01f) return;
+        float grip = swordLength * 0.19f;
+        float blade = swordLength - grip;
+        float w = swordWidth * 0.14f;   // nửa bề rộng chân lưỡi (mảnh)
+        float shoulder = blade * 0.82f;
+        float tipW = w * 0.55f;
+
+        // Hào quang mờ quanh lưỡi
+        float gw = w * 1.9f;
         Draw.blend(Blending.additive);
-        Draw.color(p.outer, 0.5f * fade);
+        Draw.color(p.outer, 0.4f * fade);
         Fill.quad(
             sx(x, ang, 0f, -gw), sy(y, ang, 0f, -gw),
             sx(x, ang, 0f, gw), sy(y, ang, 0f, gw),
-            sx(x, ang, shoulder, gw), sy(y, ang, shoulder, gw),
-            sx(x, ang, shoulder, -gw), sy(y, ang, shoulder, -gw)
+            sx(x, ang, shoulder, gw * 0.7f), sy(y, ang, shoulder, gw * 0.7f),
+            sx(x, ang, shoulder, -gw * 0.7f), sy(y, ang, shoulder, -gw * 0.7f)
         );
         Fill.tri(
-            sx(x, ang, shoulder, -gw), sy(y, ang, shoulder, -gw),
-            sx(x, ang, shoulder, gw), sy(y, ang, shoulder, gw),
-            sx(x, ang, len * 1.06f, 0f), sy(y, ang, len * 1.06f, 0f)
+            sx(x, ang, shoulder, -gw * 0.7f), sy(y, ang, shoulder, -gw * 0.7f),
+            sx(x, ang, shoulder, gw * 0.7f), sy(y, ang, shoulder, gw * 0.7f),
+            sx(x, ang, blade * 1.05f, 0f), sy(y, ang, blade * 1.05f, 0f)
         );
         Draw.blend();
 
         // Mặt sáng (trái)
-        Tmp.c3.set(p.mid).lerp(Color.white, 0.55f);
+        Tmp.c3.set(p.mid).lerp(p.core, 0.55f);
         Draw.color(Tmp.c3, fade);
         Fill.quad(
             sx(x, ang, 0f, 0f), sy(y, ang, 0f, 0f),
@@ -189,12 +187,11 @@ public class SwirdyTurret extends NevixTurret {
         Fill.tri(
             sx(x, ang, shoulder, 0f), sy(y, ang, shoulder, 0f),
             sx(x, ang, shoulder, -tipW), sy(y, ang, shoulder, -tipW),
-            sx(x, ang, len, 0f), sy(y, ang, len, 0f)
+            sx(x, ang, blade, 0f), sy(y, ang, blade, 0f)
         );
 
         // Mặt tối (phải)
-        Tmp.c3.set(p.mid).lerp(p.outer, 0.4f);
-        Draw.color(Tmp.c3, fade);
+        Draw.color(p.mid, fade);
         Fill.quad(
             sx(x, ang, 0f, 0f), sy(y, ang, 0f, 0f),
             sx(x, ang, 0f, w), sy(y, ang, 0f, w),
@@ -204,35 +201,35 @@ public class SwirdyTurret extends NevixTurret {
         Fill.tri(
             sx(x, ang, shoulder, 0f), sy(y, ang, shoulder, 0f),
             sx(x, ang, shoulder, tipW), sy(y, ang, shoulder, tipW),
-            sx(x, ang, len, 0f), sy(y, ang, len, 0f)
+            sx(x, ang, blade, 0f), sy(y, ang, blade, 0f)
         );
 
         // Sống kiếm
         Draw.color(p.core, fade);
-        Lines.stroke(Math.max(1f, w * 0.22f));
-        Lines.line(sx(x, ang, len * 0.05f, 0f), sy(y, ang, len * 0.05f, 0f), sx(x, ang, len * 0.99f, 0f), sy(y, ang, len * 0.99f, 0f));
+        Lines.stroke(Math.max(0.8f, w * 0.25f));
+        Lines.line(sx(x, ang, blade * 0.06f, 0f), sy(y, ang, blade * 0.06f, 0f), sx(x, ang, blade * 0.97f, 0f), sy(y, ang, blade * 0.97f, 0f));
 
-        // Chắn kiếm
-        float gt = w * 0.55f, gs = w * 2.7f;
-        Draw.color(GOLD, fade);
+        // Chắn kiếm: rộng đúng 1 tile, mỏng
+        float gt = 0.65f, gs = swordWidth / 2f;
+        Tmp.c3.set(p.mid).lerp(p.outer, 0.25f);
+        Draw.color(Tmp.c3, fade);
         Fill.quad(
             sx(x, ang, -gt, -gs), sy(y, ang, -gt, -gs),
             sx(x, ang, -gt, gs), sy(y, ang, -gt, gs),
-            sx(x, ang, gt, gs * 0.8f), sy(y, ang, gt, gs * 0.8f),
-            sx(x, ang, gt, -gs * 0.8f), sy(y, ang, gt, -gs * 0.8f)
+            sx(x, ang, gt, gs), sy(y, ang, gt, gs),
+            sx(x, ang, gt, -gs), sy(y, ang, gt, -gs)
         );
 
         // Chuôi + đầu chuôi
-        Tmp.c3.set(p.outer).mul(0.6f);
-        Draw.color(Tmp.c3, fade);
+        Draw.color(p.outer, fade);
         Fill.quad(
-            sx(x, ang, -grip, -w * 0.38f), sy(y, ang, -grip, -w * 0.38f),
-            sx(x, ang, -grip, w * 0.38f), sy(y, ang, -grip, w * 0.38f),
-            sx(x, ang, -gt, w * 0.38f), sy(y, ang, -gt, w * 0.38f),
-            sx(x, ang, -gt, -w * 0.38f), sy(y, ang, -gt, -w * 0.38f)
+            sx(x, ang, -grip, -w * 0.4f), sy(y, ang, -grip, -w * 0.4f),
+            sx(x, ang, -grip, w * 0.4f), sy(y, ang, -grip, w * 0.4f),
+            sx(x, ang, -gt, w * 0.4f), sy(y, ang, -gt, w * 0.4f),
+            sx(x, ang, -gt, -w * 0.4f), sy(y, ang, -gt, -w * 0.4f)
         );
-        Draw.color(GOLD, fade);
-        Fill.circle(sx(x, ang, -grip, 0f), sy(y, ang, -grip, 0f), w * 0.62f);
+        Draw.color(p.mid, fade);
+        Fill.circle(sx(x, ang, -grip, 0f), sy(y, ang, -grip, 0f), w * 0.85f);
 
         Draw.reset();
     }
@@ -240,7 +237,8 @@ public class SwirdyTurret extends NevixTurret {
     // ───────────────────────── Effects ─────────────────────────
 
     /**
-     * Nhát vung kiếm: thanh kiếm thật quét quanh tháp, để lại vệt lưỡi liềm sau mũi kiếm.
+     * Nhát vung kiếm: thanh kiếm cố định 1x2 tile quét quanh tháp và để lại các tàn ảnh.
+     * Mỗi tàn ảnh được kéo thành một vệt sáng mảnh toả ra ngoài, nhiều vệt xếp thành hình quạt.
      * data = float[]{dir(+1/-1), range, halfAngle, paletteId, sizeMul}
      */
     public static final Effect slashFx = new Effect(24f, 400f, e -> {
@@ -251,24 +249,57 @@ public class SwirdyTurret extends NevixTurret {
         float size = d.length > 4 ? d[4] : 1f;
 
         float fin = e.fin();
-        float swing = Interp.pow2Out.apply(Mathf.clamp(fin / 0.55f));
-        float swordFade = 1f - Mathf.clamp((fin - 0.6f) / 0.4f);
-        float trailFade = 1f - Interp.pow2In.apply(Mathf.clamp((fin - 0.3f) / 0.7f));
+        float swing = Interp.pow2Out.apply(Mathf.clamp(fin / 0.5f));
+        float expand = Interp.pow3Out.apply(Mathf.clamp(fin / 0.7f));
+        float swordFade = 1f - Mathf.clamp((fin - 0.55f) / 0.3f);
+        float ghostFade = 1f - Interp.pow2In.apply(Mathf.clamp((fin - 0.25f) / 0.75f));
 
         float start = e.rotation + dir * half;
-        float cur = start - dir * half * 2f * swing;
-        float swordLen = range * 0.6f;
-        float handR = 10f;
-        float tipR = handR + swordLen;
-        float scale = Mathf.clamp(range / 155f, 0.45f, 1.5f) * Mathf.clamp(size, 0.6f, 1.5f);
+        float sweep = half * 2f * swing;
+        float cur = start - dir * sweep;
+        float handR = 9f;
+        float baseR = handR + swordLength * 0.8f;
+        float ws = Mathf.clamp(size, 0.6f, 1.5f);
 
-        Draw.z(Layer.bullet + 3f);
-        drawSlashLayers(p, e.x, e.y, (start + cur) / 2f, tipR, Math.abs(start - cur) / 2f, trailFade, e.time, scale, false);
+        int ghosts = 9;
+        for(int i = 0; i <= ghosts; i++){
+            float u = i / (float)ghosts; // 0 = tàn ảnh cũ nhất ... 1 = vị trí kiếm hiện tại
+            float a = start - dir * sweep * u;
+            float alpha = ghostFade * (0.2f + 0.8f * u * u);
+            if(alpha <= 0.02f) continue;
 
+            // Vệt sáng mảnh: hình thoi dài, rộng nhất ở khoảng 30% chiều dài, mảnh dần ở tàn ảnh cũ
+            float len = baseR + Math.max(0f, range - baseR) * expand * (0.6f + 0.4f * u);
+            float L = Math.max(1f, len - handR);
+            float cx = e.x + Angles.trnsx(a, handR + L * 0.3f);
+            float cy = e.y + Angles.trnsy(a, handR + L * 0.3f);
+            float wid = (0.5f + 0.5f * u) * ws;
+
+            Draw.z(Layer.bullet + 3f);
+            Draw.blend(Blending.additive);
+            Draw.color(p.mid, 0.7f * alpha);
+            Drawf.tri(cx, cy, 5f * wid, L * 0.7f, a);
+            Drawf.tri(cx, cy, 5f * wid, L * 0.3f, a + 180f);
+            Draw.color(p.core, 0.9f * alpha);
+            Drawf.tri(cx, cy, 2f * wid, L * 0.66f, a);
+            Drawf.tri(cx, cy, 2f * wid, L * 0.26f, a + 180f);
+            Draw.blend();
+
+            // Tàn ảnh của thanh kiếm (mờ hơn kiếm thật)
+            if(i < ghosts){
+                Draw.z(Layer.bullet + 3.2f);
+                drawSword(e.x + Angles.trnsx(a, handR), e.y + Angles.trnsy(a, handR), a, alpha * 0.55f, p);
+            }
+        }
+
+        Draw.reset();
+
+        // Kiếm thật
         Draw.z(Layer.bullet + 3.5f);
-        drawSword(e.x + Angles.trnsx(cur, handR), e.y + Angles.trnsy(cur, handR), cur, swordLen, swordFade, p);
+        drawSword(e.x + Angles.trnsx(cur, handR), e.y + Angles.trnsy(cur, handR), cur, swordFade, p);
 
-        Drawf.light(e.x + Angles.trnsx(cur, tipR * 0.6f), e.y + Angles.trnsy(cur, tipR * 0.6f), tipR * 1.2f, p.light, 0.8f * trailFade);
+        float lr = baseR + Math.max(0f, range - baseR) * expand;
+        Drawf.light(e.x + Angles.trnsx(cur, lr * 0.5f), e.y + Angles.trnsy(cur, lr * 0.5f), lr, p.light, 0.8f * ghostFade);
     });
 
     /**
@@ -373,6 +404,7 @@ public class SwirdyTurret extends NevixTurret {
 
     /**
      * Luồng kiếm khí lưỡi liềm, xuyên không giới hạn (cả địch lẫn công trình).
+     * Va chạm tính theo đúng hình lưỡi liềm đang vẽ: chạm vào bất kì phần nào của kiếm khí là trúng.
      * Đối tượng đăng ký làm đạn của ItemTurret mang thêm hệ số của loại đạn đó
      * và hai đạn kĩ năng (finalWave, knockWave) cùng màu, cùng cỡ.
      */
@@ -383,6 +415,10 @@ public class SwirdyTurret extends NevixTurret {
         public int pal;
 
         public float dmgMul = 1f, sizeMul = 1f, reloadMul = 1f;
+        /** Nửa góc chém cận chiến của loại đạn này (tổng hai bên = 2 × giá trị). */
+        public float slashHalf = 30f;
+        /** Phạm vi cộng thêm (đơn vị thế giới) cho dạng đánh xa khi dùng loại đạn này. */
+        public float rangeBonus = 0f;
         public SwirdyWave finalWave, knockWave;
 
         public SwirdyWave(float speed, float damage, float arcSize, float lifetime, boolean tear, int pal){
@@ -392,6 +428,9 @@ public class SwirdyTurret extends NevixTurret {
             this.pal = pal;
             this.lifetime = lifetime;
 
+            // Va chạm tự xử lí trong update() theo hình lưỡi liềm, không dùng hitbox vuông của engine
+            collides = false;
+            collidesTiles = false;
             pierce = true;
             pierceCap = -1;
             pierceBuilding = true;
@@ -410,6 +449,55 @@ public class SwirdyTurret extends NevixTurret {
             trailLength = 0;
         }
 
+        /** Vòng cung (bán kính rad quanh tâm cx,cy) có chạm vật thể tròn (px,py,pr) không. */
+        protected boolean touches(float cx, float cy, float ang, float rad, float px, float py, float pr){
+            float dx = px - cx, dy = py - cy;
+            float d = (float)Math.sqrt(dx * dx + dy * dy);
+            if(d - pr > rad || d + pr < rad * 0.5f) return false;
+            float slack = (float)Math.toDegrees(Math.atan2(pr, Math.max(d, 1f)));
+            return Angles.within(Angles.angle(dx, dy), ang, half + slack);
+        }
+
+        @Override
+        public void update(Bullet b){
+            super.update(b);
+
+            SwirdyTurretBuild owner = b.owner instanceof SwirdyTurretBuild ? (SwirdyTurretBuild)b.owner : null;
+            float rad = arcSize * 2f;
+            float ang = b.rotation();
+            // tâm cung nằm phía sau đạn, giống lúc vẽ
+            float cx = b.x - Angles.trnsx(ang, rad), cy = b.y - Angles.trnsy(ang, rad);
+            float reach = rad + 24f;
+
+            Units.nearbyEnemies(b.team, cx - reach, cy - reach, reach * 2f, reach * 2f, u -> {
+                if(!u.isValid() || !u.checkTarget(collidesAir, collidesGround) || b.collided.contains(u.id)) return;
+                if(!touches(cx, cy, ang, rad, u.x, u.y, u.hitSize / 2f)) return;
+
+                b.collided.add(u.id);
+                if(b.damage > 0f) u.damage(b.damage);
+                if(knockback != 0f){
+                    Tmp.v3.set(u).sub(b).nor().scl(knockback * 80f);
+                    if(impact) Tmp.v3.setAngle(ang + (knockback < 0f ? 180f : 0f));
+                    u.impulse(Tmp.v3);
+                }
+                hitEffect.at(u.x, u.y, ang, hitColor);
+                if(owner != null) owner.gainPoint();
+            });
+
+            if(collidesGround){
+                indexer.allBuildings(cx, cy, reach, bd -> {
+                    if(bd.team == b.team || bd.team == mindustry.game.Team.derelict || b.collided.contains(bd.id)) return;
+                    if(!touches(cx, cy, ang, rad, bd.x, bd.y, bd.block.size * tilesize / 2f)) return;
+
+                    b.collided.add(bd.id);
+                    float dmg = b.damage * buildingDamageMultiplier;
+                    if(dmg > 0f) bd.damage(b.team, dmg);
+                    hitEffect.at(bd.x, bd.y, ang, hitColor);
+                    if(owner != null) owner.gainPoint();
+                });
+            }
+        }
+
         @Override
         public void draw(Bullet b){
             SwirdyPalette p = palette(pal);
@@ -420,22 +508,6 @@ public class SwirdyTurret extends NevixTurret {
             float cx = b.x + Tmp.v1.x, cy = b.y + Tmp.v1.y;
             drawSlashLayers(p, cx, cy, b.rotation(), rad, half, fade, b.time, arcSize / 20f, tear);
             Drawf.light(b.x, b.y, rad * 1.4f, p.light, 0.6f * fade);
-        }
-
-        @Override
-        public void hitEntity(Bullet b, Hitboxc entity, float health){
-            super.hitEntity(b, entity, health);
-            if(b.owner instanceof SwirdyTurretBuild){
-                ((SwirdyTurretBuild)b.owner).gainPoint();
-            }
-        }
-
-        @Override
-        public void hitTile(Bullet b, Building build, float x, float y, float initialHealth, boolean direct){
-            super.hitTile(b, build, x, y, initialHealth, direct);
-            if(direct && b.owner instanceof SwirdyTurretBuild){
-                ((SwirdyTurretBuild)b.owner).gainPoint();
-            }
         }
     }
 
@@ -479,10 +551,10 @@ public class SwirdyTurret extends NevixTurret {
         shootCone = 20f;
         range = rangedTiles * tilesize;
 
-        //                      màu  sát thương  độ lớn  tốc độ ra đòn
-        leadAmmo = makeAmmo(0, 0.7f, 0.7f, 1f);
-        titaniumAmmo = makeAmmo(1, 1f, 1f, 1f);
-        thoriumAmmo = makeAmmo(2, 1.5f, 1.5f, 1.15f);
+        //                      màu  sát thương  độ lớn  tốc độ  +tầm (tile)  góc chém tổng (độ)
+        leadAmmo = makeAmmo(0, 0.7f, 0.7f, 1f, 0f, 80f);
+        titaniumAmmo = makeAmmo(1, 1f, 1f, 1f, 0f, 100f);
+        thoriumAmmo = makeAmmo(2, 1.5f, 1.5f, 1.15f, 5f, 120f); // thorium: +5 tile phạm vi đánh xa
 
         ammo(
             Items.lead, leadAmmo,
@@ -493,12 +565,14 @@ public class SwirdyTurret extends NevixTurret {
         upgradeBranch();
     }
 
-    protected SwirdyWave makeAmmo(int pal, float dmgMul, float sizeMul, float reloadMul){
+    protected SwirdyWave makeAmmo(int pal, float dmgMul, float sizeMul, float reloadMul, float rangeBonusTiles, float slashTotalDeg){
         SwirdyWave w = new SwirdyWave(9f, damage[0] * dmgMul, 12f * sizeMul, 38f, false, pal);
         w.knockback = 1f;
         w.dmgMul = dmgMul;
         w.sizeMul = sizeMul;
         w.reloadMul = reloadMul;
+        w.rangeBonus = rangeBonusTiles * tilesize;
+        w.slashHalf = slashTotalDeg / 2f;
 
         SwirdyWave f = new SwirdyWave(10f, 0f, 34f * sizeMul, 40f, true, pal);
         f.knockback = 2f;
@@ -578,8 +652,9 @@ public class SwirdyTurret extends NevixTurret {
         protected float atkCounter, modeTimer, refreshTimer, slashTimer, skillTimer, skillBase;
         protected int slashQueue, slashChain, skillStage, skillCount;
         protected boolean skillActive, skillMelee;
-        /** Đang tụ lực đòn cuối; skillConverted = kĩ năng cận chiến đã đổi thành nhát cuối đánh xa. */
-        protected boolean skillCharging, skillConverted;
+        /** Đang tụ lực đòn cuối; skillOriginMelee = kĩ năng được kích hoạt ở dạng cận chiến. */
+        protected boolean skillCharging, skillOriginMelee;
+        protected float skillSwitchTimer;
         protected float chargeProgress, chargeNeed;
         /** Loại đạn dùng cho chuỗi chém cận chiến hiện tại / kĩ năng hiện tại. */
         protected SwirdyWave chainAmmo, skillAmmo;
@@ -627,7 +702,9 @@ public class SwirdyTurret extends NevixTurret {
 
         @Override
         public float range(){
-            return meleeState ? meleeRange() : rangedTiles * tilesize + range_boost[ti(rangeTier)];
+            if(meleeState) return meleeRange();
+            SwirdyWave a = curAmmo();
+            return rangedTiles * tilesize + range_boost[ti(rangeTier)] + (a != null ? a.rangeBonus : 0f);
         }
 
         protected float curReload(){
@@ -732,7 +809,7 @@ public class SwirdyTurret extends NevixTurret {
 
         /** Vung kiếm cận chiến: hướng trái→phải hoặc phải→trái ngẫu nhiên. */
         protected void coneSlash(float ang, float dmg, SwirdyWave a){
-            float half = 55f * a.sizeMul;
+            float half = a.slashHalf; // chì 80°, titan 100°, thorium 120° (tổng hai bên); sát thương lan trong cả hình quạt
             swingFx(ang, meleeRange(), half, a);
             coneDamage(ang, half, meleeRange(), dmg, a.pal);
         }
@@ -751,15 +828,19 @@ public class SwirdyTurret extends NevixTurret {
         protected void coneDamage(float ang, float half, float rng, float dmg, int pal){
             Units.nearbyEnemies(team, x - rng, y - rng, rng * 2f, rng * 2f, u -> {
                 if(!u.isValid() || !u.checkTarget(targetAir, targetGround)) return;
-                if(dst(u) - u.hitSize / 2f > rng) return;
-                if(!Angles.within(angleTo(u), ang, half)) return;
+                float d = Math.max(dst(u), 1f);
+                if(d - u.hitSize / 2f > rng) return;
+                float slack = (float)Math.toDegrees(Math.atan2(u.hitSize / 2f, d));
+                if(!Angles.within(angleTo(u), ang, half + slack)) return;
                 hitUnit(u, ang, dmg, pal);
             });
 
             if(targetGround){
                 indexer.allBuildings(x, y, rng, b -> {
                     if(b.team == team || b.team == mindustry.game.Team.derelict) return;
-                    if(!Angles.within(angleTo(b), ang, half)) return;
+                    float d = Math.max(dst(b), 1f);
+                    float slack = (float)Math.toDegrees(Math.atan2(b.block.size * tilesize / 2f, d));
+                    if(!Angles.within(angleTo(b), ang, half + slack)) return;
                     hitBuild(b, ang, dmg, pal);
                 });
             }
@@ -830,6 +911,8 @@ public class SwirdyTurret extends NevixTurret {
                 return;
             }
 
+            updateSkillMode();
+
             if(skillCharging){
                 updateCharge(dt);
                 return;
@@ -854,7 +937,8 @@ public class SwirdyTurret extends NevixTurret {
             slashQueue = 0;
             skillHit.clear();
             skillCharging = false;
-            skillConverted = false;
+            skillOriginMelee = melee;
+            skillSwitchTimer = 0f;
             chargeProgress = 0f;
             skillAmmo = curAmmo(); // kĩ năng lấy màu/cỡ theo đạn lúc kích hoạt, không tốn đạn
             skillBase = angleTo(target);
@@ -864,7 +948,6 @@ public class SwirdyTurret extends NevixTurret {
         protected void endSkill(){
             skillActive = false;
             skillCharging = false;
-            skillConverted = false;
             chargeProgress = 0f;
             atkCounter = 0f;
             skillHit.clear();
@@ -912,22 +995,31 @@ public class SwirdyTurret extends NevixTurret {
         }
 
         /**
-         * Tụ lực đòn cuối.
-         * - Cận chiến mà hết địch trong tầm cận chiến khi chưa tụ xong: đổi thành nhát cuối đánh xa
-         *   (50% tổng 3 tia) và tụ lực lại từ đầu.
-         * - Đánh xa (kể cả bản đã đổi): không còn địch thì tụ lực lại từ đầu.
+         * Trong lúc kĩ năng chưa tung đòn cuối: đổi dạng theo địch. Đổi dạng thì bỏ các đòn phụ còn lại,
+         * chỉ tụ lực (từ đầu) rồi tung đòn cuối của dạng mới.
          */
+        protected void updateSkillMode(){
+            skillSwitchTimer -= Time.delta;
+            modeTimer += Time.delta;
+            if(modeTimer < 4f) return;
+            modeTimer = 0f;
+            if(skillSwitchTimer > 0f) return;
+
+            Teamc t = meleeStateUnlock ? closestMeleeEnemy() : null;
+            boolean wantMelee = t != null && meleeSkillUnlock;
+            if(wantMelee == skillMelee) return;
+
+            skillMelee = wantMelee;
+            meleeState = wantMelee; // range() đổi theo dạng
+            target = wantMelee ? t : null;
+            skillSwitchTimer = 15f; // tránh đổi qua đổi lại liên tục ở rìa tầm cận chiến
+            slashQueue = 0;
+            beginCharge(wantMelee ? meleeChargeTicks : rangedChargeTicks);
+        }
+
+        /** Tụ lực đòn cuối: không còn địch (trong tầm của dạng hiện tại) thì tụ lực lại từ đầu. */
         protected void updateCharge(float dt){
             Posc en = skillMelee ? closestMeleeEnemy() : target;
-
-            if(skillMelee && en == null){
-                skillMelee = false;
-                skillConverted = true;
-                meleeState = false; // range() trở lại tầm đánh xa
-                target = null;
-                beginCharge(rangedChargeTicks);
-                return;
-            }
 
             if(en == null){
                 chargeProgress = 0f;
@@ -957,8 +1049,8 @@ public class SwirdyTurret extends NevixTurret {
                 }
                 Effect.shake(6.5f, 14f, x, y);
             }else{
-                // Bản đổi từ cận chiến: 50% tổng sát thương của cả ba tia (3 × 3000% × 50%)
-                float dmg = skillConverted ? melee_damage[ti(meleeTier)] * 45f : damage[ti(Tier)] * 30f;
+                // Kĩ năng bắt đầu ở cận chiến rồi đổi sang đánh xa: 50% tổng sát thương cả ba tia (3 × 3000% × 50%)
+                float dmg = skillOriginMelee ? melee_damage[ti(meleeTier)] * 45f : damage[ti(Tier)] * 30f;
                 fireWave(a.finalWave, ang, dmg);
                 swingFx(ang, 96f * a.sizeMul, 55f, a);
                 Effect.shake(5.5f, 12f, x, y);
