@@ -23,7 +23,7 @@ public class PromotionSys {
             var b = event.bullet;
             if(u == null || b == null || b.team == null) return;
             if(u.team == b.team) return;
-            if(!Mathf.chance(Core.settings.getInt("star-drop-chance") / 1000f)) return;
+            if(!Mathf.chance(1f / 1000f)) return;
 
             var core = b.team.core();
             if(core == null) return;
