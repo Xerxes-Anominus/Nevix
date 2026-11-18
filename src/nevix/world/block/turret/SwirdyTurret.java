@@ -396,7 +396,7 @@ public class SwirdyTurret extends NevixTurret {
     }
     
     public static void drawHalo(SwirdyPalette p, float x, float y, float time, float fade){
-        final float R = tilesize;
+        final float R = tilesize * 0.5f;
         final float spike = tilesize * 0.5f;
 
         float z = Draw.z();
@@ -409,7 +409,7 @@ public class SwirdyTurret extends NevixTurret {
         Draw.color(p.light, 0.95f * fade);
         for(int k = 0; k < 4; k++){
             float a = k * 90f;
-            Drawf.tri(x + Angles.trnsx(a, R - 1f), y + Angles.trnsy(a, R - 1f), 3.5f, spike + 1f, a);
+            Drawf.tri(x + Angles.trnsx(a, R - 1f), y + Angles.trnsy(a, R - 1f), 2f, spike + 1f, a);
         }
         
         float orbit = R + spike + 0.5f;
