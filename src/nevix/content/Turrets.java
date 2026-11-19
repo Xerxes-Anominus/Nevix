@@ -7,6 +7,7 @@ import mindustry.type.ItemStack;
 import mindustry.world.Block;
 import mindustry.world.draw.DrawTurret;
 import nevix.world.block.turret.BerserkerTurret;
+import nevix.world.block.turret.EmpericalTurret;
 import nevix.world.block.turret.MarkerTurret;
 import nevix.world.block.turret.SpinupTurret;
 import nevix.world.block.turret.SwirdyTurret;
@@ -17,7 +18,9 @@ public final class Turrets {
 
     public static Block
     // Beta 0.1s Bros:))
-    spinup, berserker, marker, zoen, swirdy;
+    spinup, berserker, marker, zoen,
+    
+    swirdy, emperical;
 
     public static void load() {
         spinup = new SpinupTurret("spinup") {{
@@ -72,6 +75,12 @@ public final class Turrets {
                 }}
                 );
             }};
+        }};
+        
+        emperical = new EmpericalTurret("emperical") {{
+            requirements(Category.turret, ItemStack.with(Items.copper, 1));
+            
+            drawer = new DrawTurret("reinforced-");
         }};
     }
 }
