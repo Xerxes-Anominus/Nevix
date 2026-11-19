@@ -78,7 +78,11 @@ public final class Turrets {
         }};
         
         emperical = new EmpericalTurret("emperical") {{
-            requirements(Category.turret, ItemStack.with(Items.copper, 1));
+            requirements(Category.turret, ItemStack.with(Items.titanium, 4000, Items.thorium, 2000, Items.silicon, 7000, Items.surgeAlloy, 500, Items.phaseFabric, 700, Items.plastanium, 1000));
+            
+            consumesPower = true;
+            consumePower(203.7f);
+            hasPower = true;
             
             drawer = new DrawTurret("reinforced-");
         }};
