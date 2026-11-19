@@ -43,11 +43,13 @@ public class EmpericalTurret extends NevixTurret {
         BLADE_SPEED = 16f,            // px/tick
         INTRINSIC_STEP = 0.1f,        // +10% mỗi lần phóng
         INTRINSIC_MAX = 4f,           // tối đa +400%
-        INTRINSIC_DECAY_DELAY = 180f, // mất mục tiêu quá lâu thì reset buff (tự thêm)
-        SWEEP_SWING = 12f,            // tick vung kiếm (khớp với sweepFx: 50% của 24 tick)
-        SWEEP_GAP = 6f,               // nghỉ giữa các lượt quét
-        SWEEP_HALF = 70f,             // nửa góc quét (độ)
+        INTRINSIC_RESET_TIME = 300f,  // 5 giây không phóng thanh kiếm nào thì Intrinsic về 0%
+        MERGE_DIST = 12f * tilesize,  // điểm hợp nhất nằm xa điểm chém chừng này, THEO CHIỀU BAY của kiếm chính
+        MERGED_SLASH_SPEED = 36f,     // px/tick của đại kiếm hợp nhất khi chém về Emperical
         SPIRIT_RESPAWN = 600f,
+        SPIRIT_FADE_TIME = 30f,       // tick Spirit mờ dần trước khi nổ biến mất
+        HALO_FADE_TIME = 60f,         // tick để halo hiện/mất hoàn toàn
+        SPIRIT_MIN_EFFICIENCY = 0.05f, // hiệu suất thấp hơn mức này coi như Emperical ngừng hoạt động
         SPIRIT_SPEED = 3f,
         SPIRIT_CONTACT_DPS = 15f;     // dps mỗi kẻ địch gần gây lên Spirit (tự thêm)
 
@@ -268,52 +270,6 @@ public class EmpericalTurret extends NevixTurret {
         Draw.reset();
         Drawf.light(e.x, e.y, 80f * fin, p.light, 0.8f * fin);
     }),
-    /** Đại kiếm quét. data = {dir, range, half, handR, size}. Phối hợp với SwirdyTurret.drawSwordTrail. */
-    sweepFx = new Effect(24f, 1400f, e -> {
-        if (!(e.data instanceof float[])) return;
-        float[] d = (float[]) e.data;
-        float dir = d[0], range = d[1], half = d[2], handR = d[3], size = d[4];
-        SwirdyTurret.SwirdyPalette p = pal();
-
-        float fin = e.fin();
-        float swing = Interp.pow2Out.apply(Mathf.clamp(fin / 0.5f));
-        float expand = Interp.pow3Out.apply(Mathf.clamp(fin / 0.7f));
-        float swordFade = 1f - Mathf.clamp((fin - 0.55f) / 0.3f);
-        float ghostFade = 1f - Interp.pow2In.apply(Mathf.clamp((fin - 0.25f) / 0.75f));
-
-        float start = e.rotation + dir * half;
-        float sweep = half * 2f * swing;
-        float cur = start - dir * sweep;
-        float len = 56f * size;
-        float baseR = handR + len * 0.8f;
-        float tail = Interp.pow2In.apply(Mathf.clamp((fin - 0.4f) / 0.6f));
-
-        Draw.z(Layer.bullet + 3f);
-        SwirdyTurret.drawSwordTrail(p, e.x, e.y, start, dir, sweep, handR, baseR, range, expand, tail, ghostFade);
-
-        if (ghostFade > 0.02f) {
-            float rr = baseR + Math.max(0f, range - baseR) * expand;
-            float L = Math.max(1f, rr - handR);
-            float cx = e.x + Angles.trnsx(cur, handR + L * 0.3f);
-            float cy = e.y + Angles.trnsy(cur, handR + L * 0.3f);
-            Draw.z(Layer.bullet + 3f);
-            Draw.blend(Blending.additive);
-            Draw.color(p.mid, 0.7f * ghostFade);
-            Drawf.tri(cx, cy, 9f * size, L * 0.7f, cur);
-            Drawf.tri(cx, cy, 9f * size, L * 0.3f, cur + 180f);
-            Draw.color(p.core, 0.9f * ghostFade);
-            Drawf.tri(cx, cy, 3.5f * size, L * 0.66f, cur);
-            Drawf.tri(cx, cy, 3.5f * size, L * 0.26f, cur + 180f);
-            Draw.blend();
-        }
-        Draw.reset();
-
-        Draw.z(Layer.bullet + 3.5f);
-        drawBlade(e.x + Angles.trnsx(cur, handR), e.y + Angles.trnsy(cur, handR), cur, len, swordFade, p);
-
-        float lr = baseR + Math.max(0f, range - baseR) * expand;
-        Drawf.light(e.x + Angles.trnsx(cur, lr * 0.5f), e.y + Angles.trnsy(cur, lr * 0.5f), lr, p.light, 0.8f * ghostFade);
-    }),
     /** Dư ảnh Spirit khi lướt. */
     ghostFx = new Effect(18f, e -> {
         SwirdyTurret.SwirdyPalette p = pal();
@@ -346,6 +302,39 @@ public class EmpericalTurret extends NevixTurret {
         Draw.blend();
         Draw.reset();
         Drawf.light(e.x, e.y, 60f, p.light, 0.8f * fout);
+    }),
+    /** Spirit chết (sau khi mờ hết): nổ tròn + sao 4 cánh ở giữa + tia lửa. Chỉ là hiệu ứng, không gây sát thương. */
+    spiritDeathFx = new Effect(40f, 240f, e -> {
+        SwirdyTurret.SwirdyPalette p = pal();
+        float fin = e.fin(), fout = e.fout();
+        Draw.z(Layer.bullet + 3f);
+        Draw.blend(Blending.additive);
+        // quầng nổ tròn
+        Draw.color(p.mid, 0.55f * fout);
+        Fill.circle(e.x, e.y, 22f * Interp.pow2Out.apply(Mathf.clamp(fin / 0.4f)) * fout + 4f * fout);
+        Draw.color(p.light, fout);
+        Lines.stroke(3.2f * fout);
+        Lines.circle(e.x, e.y, 4f + Interp.pow3Out.apply(fin) * 40f);
+        Draw.color(p.outer, 0.8f * fout);
+        Lines.stroke(1.6f * fout);
+        Lines.circle(e.x, e.y, 2f + Interp.pow2Out.apply(fin) * 24f);
+        // sao 4 cánh ở giữa
+        float sl = 38f * Interp.pow2Out.apply(Mathf.clamp(fin / 0.5f));
+        for (int k = 0; k < 4; k++) {
+            Draw.color(k % 2 == 0 ? Color.white : p.core, fout);
+            Drawf.tri(e.x, e.y, 5f * fout, k % 2 == 0 ? sl : sl * 0.6f, e.rotation + k * 90f);
+        }
+        // tia lửa
+        Angles.randLenVectors(e.id, 14, 6f + Interp.pow3Out.apply(fin) * 54f, (dx, dy) -> {
+            float a = Mathf.angle(dx, dy);
+            Draw.color(Color.white, p.dustA, fin);
+            Draw.alpha(fout);
+            Lines.stroke(1.3f * fout + 0.3f);
+            Lines.lineAngle(e.x + dx, e.y + dy, a, 2f + fout * 7f);
+        });
+        Draw.blend();
+        Draw.reset();
+        Drawf.light(e.x, e.y, 70f, p.light, 0.8f * fout);
     }),
     /** Bụi vàng bám trên kẻ địch bị làm chậm. */
     slowFx = new Effect(26f, e -> {
@@ -435,7 +424,6 @@ public class EmpericalTurret extends NevixTurret {
     emperical_intrinsic,
     emperical_charge_shoot_0,
     emperical_charge_shoot_1,
-    emperical_great_sword,
     emperical_sword_spirit_0,
     emperical_sword_spirit_1,
     emperical_sword_spirit_2;
@@ -465,9 +453,6 @@ public class EmpericalTurret extends NevixTurret {
         emperical_charge_shoot_1 = addUpgrade("emperical-charge-shoot-1", "", ItemStack.with(Items.silicon, 350, Items.thorium, 250, Items.plastanium, 200, Items.surgeAlloy, 100),
             (EmpericalTurretBuild b) -> b.chargeTier = Math.max(b.chargeTier, 2), (EmpericalTurretBuild b) -> b.chargeTier = 0).levelAfter(emperical_charge_shoot_0);
 
-        emperical_great_sword = addUpgrade("emperical-great-sword", "", ItemStack.with(Items.silicon, 300, Items.titanium, 300, Items.thorium, 250, Items.plastanium, 150),
-            (EmpericalTurretBuild b) -> b.hasGreatSword = true, (EmpericalTurretBuild b) -> b.hasGreatSword = false);
-
         emperical_sword_spirit_0 = addUpgrade("emperical-sword-spirit-0", "", ItemStack.with(Items.silicon, 300, Items.thorium, 250, Items.plastanium, 150, Items.surgeAlloy, 100),
             (EmpericalTurretBuild b) -> b.spiritTier = Math.max(b.spiritTier, 1), (EmpericalTurretBuild b) -> b.spiritTier = 0);
         emperical_sword_spirit_1 = addUpgrade("emperical-sword-spirit-1", "", ItemStack.with(Items.thorium, 300, Items.plastanium, 200, Items.surgeAlloy, 150),
@@ -482,15 +467,14 @@ public class EmpericalTurret extends NevixTurret {
         public int DamageTier;
         public boolean hasIntrinsic;
         public int chargeTier;
-        public boolean hasGreatSword;
         public int spiritTier;
 
         // ===== Trạng thái runtime =====
         public Teamc spiritTarget;
-        public float atkCounter, refreshTimer, spiritTargetTimer, noTargetTimer, intrinsicBuff, spiritRespawn;
-        public int swordsFired, spiritPoints;
+        public float atkCounter, refreshTimer, spiritTargetTimer, sinceLaunch, intrinsicBuff, spiritRespawn;
+        public int spiritPoints;
+        public float haloFade; // 0..1, độ hiện của halo
         public Seq<Blade> blades = new Seq<>();
-        public Seq<Sweep> sweeps = new Seq<>();
         public Seq<Spirit> spirits = new Seq<>();
 
         // ===================== Nâng cấp / chỉ số =====================
@@ -508,7 +492,6 @@ public class EmpericalTurret extends NevixTurret {
             DamageTier = count(emperical_damage_1, emperical_damage_2, null);
             hasIntrinsic = owned(emperical_intrinsic);
             chargeTier = count(emperical_charge_shoot_0, emperical_charge_shoot_1, null);
-            hasGreatSword = owned(emperical_great_sword);
             spiritTier = count(emperical_sword_spirit_0, emperical_sword_spirit_1, emperical_sword_spirit_2);
         }
 
@@ -553,12 +536,9 @@ public class EmpericalTurret extends NevixTurret {
 
             float dt = delta() * efficiency;
 
-            if (target != null) {
-                noTargetTimer = 0f;
-            } else {
-                noTargetTimer += dt;
-                if (noTargetTimer > INTRINSIC_DECAY_DELAY) intrinsicBuff = 0f;
-            }
+            // Intrinsic về 0% nếu 5 giây (thời gian thật) không phóng thanh kiếm nào
+            sinceLaunch = Math.min(sinceLaunch + Time.delta, INTRINSIC_RESET_TIME);
+            if (sinceLaunch >= INTRINSIC_RESET_TIME) intrinsicBuff = 0f;
             if (atkCounter < 10000f) atkCounter += dt * speedMult();
 
             super.updateTile();
@@ -573,8 +553,6 @@ public class EmpericalTurret extends NevixTurret {
             float d = Time.delta;
             for (int i = 0; i < blades.size; i++) blades.get(i).update(d);
             blades.removeAll(b -> b.dead);
-            for (int i = 0; i < sweeps.size; i++) sweeps.get(i).update(d);
-            sweeps.removeAll(s -> s.done);
             updateSpirits(d);
         }
 
@@ -618,14 +596,8 @@ public class EmpericalTurret extends NevixTurret {
 
         /** Gọi mỗi khi Emperical thực sự phóng một thanh kiếm. */
         void onLaunch() {
+            sinceLaunch = 0f;
             if (hasIntrinsic) intrinsicBuff = Math.min(INTRINSIC_MAX, intrinsicBuff + INTRINSIC_STEP);
-            if (hasGreatSword) {
-                swordsFired++;
-                if (swordsFired >= 300) {
-                    swordsFired = 0;
-                    sweeps.add(new Sweep(rotation));
-                }
-            }
         }
 
         // ===================== Sát thương =====================
@@ -687,26 +659,54 @@ public class EmpericalTurret extends NevixTurret {
             return total[0];
         }
 
-        // ===================== Kiếm =====================
-        public class Group {
-            int remaining, count;
-            float tx, ty, ox, oy, dmg;
-            boolean merge;
+        /** Như lineDamage nhưng mỗi mục tiêu chỉ trúng 1 lần (dùng cho đại kiếm hợp nhất đang di chuyển). */
+        float lineDamageOnce(float x1, float y1, float x2, float y2, float width, float dmg, IntSet hit) {
+            float[] total = {0f};
+            float mx = (x1 + x2) / 2f, my = (y1 + y2) / 2f;
+            float half = Mathf.dst(x1, y1, x2, y2) / 2f + width;
+            Units.nearbyEnemies(team, mx - half, my - half, half * 2f, half * 2f, u -> {
+                if (!u.isValid() || !u.checkTarget(targetAir, targetGround) || hit.contains(u.id)) return;
+                if (Intersector.distanceSegmentPoint(x1, y1, x2, y2, u.x, u.y) <= width + u.hitSize / 2f) {
+                    hit.add(u.id);
+                    total[0] += hitUnit(u, dmg);
+                }
+            });
+            if (targetGround) {
+                indexer.allBuildings(mx, my, half, b -> {
+                    if (b.team == team || b.team == Team.derelict || hit.contains(b.id)) return;
+                    if (Intersector.distanceSegmentPoint(x1, y1, x2, y2, b.x, b.y) <= width + b.block.size * tilesize / 2f) {
+                        hit.add(b.id);
+                        total[0] += hitBuild(b, dmg);
+                    }
+                });
+            }
+            return total[0];
         }
 
-        /** kind: 0 thường, 1 đại kiếm (charge shoot), 2 mảnh kiếm tách ra, 3 đại kiếm hợp nhất. */
+        // ===================== Kiếm =====================
+        public class Group {
+            int count, gathered;
+            float tx, ty, ox, oy, mx, my, dmg; // (tx,ty) điểm chém, (ox,oy) Emperical, (mx,my) điểm hợp nhất
+            boolean merge;
+            Seq<Blade> shards = new Seq<>();
+        }
+
+        /** kind: 0 thường, 1 đại kiếm (charge shoot), 2 mảnh kiếm tách ra, 3 đại kiếm hợp nhất.
+         *  phase: 0 tụ lực/chờ, 1 bay, 2 (chỉ mảnh kiếm) bay về điểm hợp nhất sau khi đã chém. */
         public class Blade {
-            int kind, phase; // phase: 0 tụ lực/chờ, 1 bay
+            int kind, phase;
             float px, py, rot, timer, chargeTotal, tx, ty, dmg, mult;
-            boolean dead, counts, merge;
+            boolean dead, counts, merge, parked;
             Teamc aim;
             Group g;
+            IntSet hit; // chỉ dùng cho kind 3: mỗi mục tiêu chỉ trúng 1 lần trên đường chém
 
             boolean big() {
                 return kind == 1 || kind == 3;
             }
 
             void update(float dt) {
+                if (dead || parked) return;
                 if (phase == 0) {
                     timer -= dt;
                     if (kind == 0 || kind == 1) {
@@ -716,31 +716,30 @@ public class EmpericalTurret extends NevixTurret {
                     if (timer <= 0f) launch();
                 } else {
                     float d = Mathf.dst(px, py, tx, ty);
-                    float step = BLADE_SPEED * dt;
-                    if (d <= step) {
-                        px = tx;
-                        py = ty;
-                        arrive();
+                    float step = (kind == 3 ? MERGED_SLASH_SPEED : BLADE_SPEED) * dt;
+                    boolean reached = d <= step;
+                    float nx, ny;
+                    if (reached) {
+                        nx = tx;
+                        ny = ty;
                     } else {
                         rot = Angles.angle(px, py, tx, ty);
-                        px += Angles.trnsx(rot, step);
-                        py += Angles.trnsy(rot, step);
+                        nx = px + Angles.trnsx(rot, step);
+                        ny = py + Angles.trnsy(rot, step);
+                    }
+                    // đại kiếm hợp nhất gây sát thương dọc theo đường nó đi qua
+                    if (kind == 3) lineDamageOnce(px, py, nx, ny, 14f, g.dmg * 2f * g.count, hit);
+                    px = nx;
+                    py = ny;
+                    if (reached) {
+                        if (phase == 2) gather();
+                        else arrive();
                     }
                 }
             }
 
             void launch() {
                 SwirdyTurret.SwirdyPalette p = pal();
-                if (kind == 3) { // chém ngược về phía Emperical
-                    float len = Mathf.dst(px, py, g.ox, g.oy);
-                    float ang = Angles.angle(px, py, g.ox, g.oy);
-                    lineDamage(px, py, g.ox, g.oy, 14f, g.dmg * 2f * g.count);
-                    SwirdyTurret.lineSlashFx.at(px, py, ang, p.light, new float[]{len, PAL, 1.3f});
-                    greatImpactFx.at(g.ox, g.oy, 0f, p.light);
-                    Effect.shake(6.5f, 14f, g.ox, g.oy);
-                    dead = true;
-                    return;
-                }
                 if (kind == 2) {
                     tx = g.tx;
                     ty = g.ty;
@@ -782,11 +781,14 @@ public class EmpericalTurret extends NevixTurret {
                         Effect.shake(4f, 14f, px, py);
                         int n = Mathf.random(3, 10);
                         Group grp = new Group();
-                        grp.remaining = grp.count = n;
+                        grp.count = n;
                         grp.tx = px;
                         grp.ty = py;
                         grp.ox = x;
                         grp.oy = y;
+                        // điểm hợp nhất: đi tiếp theo CHIỀU BAY của kiếm chính, vượt qua điểm chém
+                        grp.mx = px + Angles.trnsx(rot, MERGE_DIST);
+                        grp.my = py + Angles.trnsy(rot, MERGE_DIST);
                         grp.dmg = dmg;
                         grp.merge = merge;
                         for (int i = 0; i < n; i++) {
@@ -799,6 +801,7 @@ public class EmpericalTurret extends NevixTurret {
                             s.py = py + Tmp.v2.y;
                             s.rot = Angles.angle(s.px, s.py, px, py);
                             launchFx.at(s.px, s.py, s.rot + 180f, p.light);
+                            grp.shards.add(s);
                             blades.add(s);
                         }
                         dead = true;
@@ -807,25 +810,53 @@ public class EmpericalTurret extends NevixTurret {
                     case 2:
                         areaDamage(px, py, 24f, g.dmg * 1.5f, true);
                         shardFx.at(px, py, 0f, p.light);
-                        if (--g.remaining <= 0 && g.merge) {
-                            Blade m = new Blade();
-                            m.kind = 3;
-                            m.g = g;
-                            m.px = 2f * g.ox - g.tx; // toạ độ đối diện Emperical
-                            m.py = 2f * g.oy - g.ty;
-                            m.rot = Angles.angle(m.px, m.py, g.ox, g.oy);
-                            m.timer = m.chargeTotal = 40f;
-                            mergeFx.at(m.px, m.py, 0f, p.light);
-                            blades.add(m);
+                        if (g.merge) { // chém xong là bay thẳng về điểm hợp nhất
+                            phase = 2;
+                            tx = g.mx;
+                            ty = g.my;
+                        } else {
+                            dead = true;
                         }
+                        break;
+                    case 3: // đại kiếm hợp nhất chém tới Emperical
+                        greatImpactFx.at(px, py, 0f, p.light);
+                        Effect.shake(6.5f, 14f, px, py);
                         dead = true;
                         break;
                 }
             }
 
+            /** Mảnh kiếm (đã chém xong) tới điểm hợp nhất. Mảnh cuối tới nơi thì hợp nhất ngay và chém về Emperical. */
+            void gather() {
+                SwirdyTurret.SwirdyPalette p = pal();
+                parked = true;
+                rot = Angles.angle(px, py, g.ox, g.oy);
+                if (++g.gathered < g.count) return;
+
+                for (int i = 0; i < g.shards.size; i++) g.shards.get(i).dead = true;
+
+                Blade m = new Blade();
+                m.kind = 3;
+                m.g = g;
+                m.px = g.mx;
+                m.py = g.my;
+                m.tx = g.ox;
+                m.ty = g.oy;
+                m.rot = Angles.angle(m.px, m.py, g.ox, g.oy);
+                m.phase = 1; // không tụ lực: bay (chém) luôn
+                m.hit = new IntSet();
+                float len = Mathf.dst(m.px, m.py, g.ox, g.oy);
+                mergeFx.at(m.px, m.py, 0f, p.light);
+                launchFx.at(m.px, m.py, m.rot, p.light);
+                SwirdyTurret.lineSlashFx.at(m.px, m.py, m.rot, p.light, new float[]{len, PAL, 1.3f}); // đường chém
+                Effect.shake(3f, 10f, m.px, m.py);
+                blades.add(m);
+            }
+
             void draw() {
                 SwirdyTurret.SwirdyPalette p = pal();
                 boolean big = big();
+                boolean merged = kind == 3;
                 float f = (phase == 0 && chargeTotal > 0f) ? 1f - Mathf.clamp(timer / chargeTotal) : 1f;
                 Draw.z(Layer.bullet + 3f);
 
@@ -842,20 +873,22 @@ public class EmpericalTurret extends NevixTurret {
                         Draw.blend();
                         Draw.reset();
                     }
-                } else {
-                    // vệt sáng 3 lớp phía sau kiếm đang bay
+                } else if (!parked) {
+                    // vệt sáng 3 lớp phía sau kiếm đang bay (đại kiếm hợp nhất to và dài hơn)
+                    float sp = merged ? MERGED_SLASH_SPEED : BLADE_SPEED;
+                    float wm = merged ? 1.5f : 1f;
                     Draw.blend(Blending.additive);
                     Draw.color(p.outer, 0.6f);
-                    Drawf.tri(px, py, big ? 9f : 5f, BLADE_SPEED * (big ? 6f : 4f), rot + 180f);
+                    Drawf.tri(px, py, (big ? 9f : 5f) * wm, sp * (big ? 6f : 4f), rot + 180f);
                     Draw.color(p.mid, 0.85f);
-                    Drawf.tri(px, py, big ? 5f : 3f, BLADE_SPEED * (big ? 5f : 3.2f), rot + 180f);
+                    Drawf.tri(px, py, (big ? 5f : 3f) * wm, sp * (big ? 5f : 3.2f), rot + 180f);
                     Draw.color(Color.white, 0.95f);
-                    Drawf.tri(px, py, big ? 2f : 1.2f, BLADE_SPEED * (big ? 4f : 2.4f), rot + 180f);
+                    Drawf.tri(px, py, (big ? 2f : 1.2f) * wm, sp * (big ? 4f : 2.4f), rot + 180f);
                     Draw.blend();
                     Draw.reset();
                 }
 
-                float len = (big ? 46f : 24f) * (kind == 2 && phase == 0 ? 0.7f : (0.4f + 0.6f * f));
+                float len = (big ? (merged ? 72f : 46f) : 24f) * (kind == 2 && phase == 0 ? 0.7f : (0.4f + 0.6f * f));
                 float fade = (kind == 2 && phase == 0) ? Mathf.clamp(1f - timer / Math.max(1f, chargeTotal) + 0.3f) : 1f;
                 drawBlade(px - Angles.trnsx(rot, len * 0.3f), py - Angles.trnsy(rot, len * 0.3f), rot, len, fade, p);
                 Drawf.light(px, py, len * 1.4f, p.light, 0.6f);
@@ -863,89 +896,32 @@ public class EmpericalTurret extends NevixTurret {
             }
         }
 
-        // ===================== Đại kiếm quét =====================
-        public class Sweep {
-            float rot0, t, dir = 1f;
-            int count = 1;
-            IntSet hit = new IntSet();
-            boolean done;
-
-            Sweep(float rot) {
-                rot0 = rot;
-                begin();
-            }
-
-            float handR() {
-                return size * tilesize / 2f + 6f;
-            }
-
-            void begin() {
-                // sweepFx dùng dir ngược với quy ước của Sweep: cur = start - dirE * sweep
-                sweepFx.at(x, y, rot0, pal().light, new float[]{-dir, range() * 1.5f, SWEEP_HALF, handR(), 1.2f});
-                Effect.shake(6f, 20f, x, y);
-            }
-
-            float relOf(float ang) {
-                return (Mathf.mod(ang - rot0 + 180f, 360f) - 180f) * dir;
-            }
-
-            void update(float dt) {
-                t += dt;
-                float swing = Interp.pow2Out.apply(Mathf.clamp(t / SWEEP_SWING));
-                float rel = -SWEEP_HALF + 2f * SWEEP_HALF * swing;
-                float r = range() * 1.5f;
-                float dmg = calcDamage() * 20f;
-
-                Units.nearbyEnemies(team, x - r, y - r, r * 2f, r * 2f, u -> {
-                    if (!u.isValid() || !u.checkTarget(targetAir, targetGround) || hit.contains(u.id)) return;
-                    if (!u.within(x, y, r + u.hitSize / 2f)) return;
-                    float a = relOf(Angles.angle(x, y, u.x, u.y));
-                    if (a >= -SWEEP_HALF && a <= rel) {
-                        hit.add(u.id);
-                        hitUnit(u, dmg);
-                        greatImpactFx.at(u.x, u.y, 0f, pal().light);
-                    }
-                });
-                if (targetGround) {
-                    indexer.allBuildings(x, y, r, b -> {
-                        if (b.team == team || b.team == Team.derelict || hit.contains(b.id)) return;
-                        float a = relOf(Angles.angle(x, y, b.x, b.y));
-                        if (a >= -SWEEP_HALF && a <= rel) {
-                            hit.add(b.id);
-                            hitBuild(b, dmg);
-                        }
-                    });
-                }
-
-                if (t >= SWEEP_SWING + SWEEP_GAP) {
-                    if (count < 5 && Mathf.chance(0.5f)) { // quét lại, tối đa 5 lần
-                        count++;
-                        dir = -dir;
-                        t = 0f;
-                        hit.clear();
-                        begin();
-                    } else {
-                        done = true;
-                    }
-                }
-            }
+        // ===================== Sword Spirit =====================
+        /** Spirit chỉ tồn tại khi có nâng cấp Spirit, còn đạn và hiệu suất không gần bằng 0 (hết điện/điện âm nặng). */
+        public boolean spiritsAllowed() {
+            return spiritTier > 0 && hasAmmo() && efficiency > SPIRIT_MIN_EFFICIENCY;
         }
 
-        // ===================== Sword Spirit =====================
         void updateSpirits(float dt) {
-            if (spiritTier <= 0) return;
-            int want = Math.min(spiritPoints, SPIRIT_COUNT[Math.min(spiritTier, SPIRIT_COUNT.length - 1)]);
-
-            if (spirits.size < want) {
-                spiritRespawn += dt;
-                if (spiritRespawn >= SPIRIT_RESPAWN || spirits.isEmpty()) {
-                    spiritRespawn = 0f;
-                    Spirit sp = new Spirit();
-                    spiritSpawnFx.at(sp.px, sp.py, 0f, pal().light);
-                    spirits.add(sp);
-                }
-            } else {
+            if (!spiritsAllowed()) { // ngừng hoạt động: toàn bộ Spirit mờ dần rồi nổ, không hồi sinh tới khi hoạt động lại
+                for (int i = 0; i < spirits.size; i++) spirits.get(i).die();
                 spiritRespawn = 0f;
+            } else {
+                int want = Math.min(spiritPoints, SPIRIT_COUNT[Math.min(spiritTier, SPIRIT_COUNT.length - 1)]);
+                int alive = 0;
+                for (int i = 0; i < spirits.size; i++) if (!spirits.get(i).fading) alive++;
+
+                if (alive < want) {
+                    spiritRespawn += dt;
+                    if (spiritRespawn >= SPIRIT_RESPAWN || alive == 0) {
+                        spiritRespawn = 0f;
+                        Spirit sp = new Spirit();
+                        spiritSpawnFx.at(sp.px, sp.py, 0f, pal().light);
+                        spirits.add(sp);
+                    }
+                } else {
+                    spiritRespawn = 0f;
+                }
             }
 
             for (int i = 0; i < spirits.size; i++) spirits.get(i).update(dt);
@@ -963,8 +939,8 @@ public class EmpericalTurret extends NevixTurret {
             float slashTimer, cd1, cd2, cd3, boostTimer, comboTimer;
             float sx, sy, ex, ey, dashT;
             int comboLeft;
-            boolean dead;
-            float facing;
+            boolean dead, fading;
+            float facing, fade;
 
             Spirit() {
                 health = maxHp();
@@ -983,6 +959,15 @@ public class EmpericalTurret extends NevixTurret {
                 return baseReload() / (boostTimer > 0f ? 1.5f : 1f);
             }
 
+            /** Bắt đầu chết: mờ dần (cơ thể + vũ khí) rồi mới nổ biến mất. */
+            void die() {
+                if (fading) return;
+                fading = true;
+                fade = SPIRIT_FADE_TIME;
+                dashT = 0f;
+                comboLeft = 0;
+            }
+
             void heal(float amt) {
                 float add = Math.min(maxHp() - health, amt);
                 health += add;
@@ -990,10 +975,18 @@ public class EmpericalTurret extends NevixTurret {
             }
 
             void update(float dt) {
+                if (fading) { // đang mờ dần: đứng yên, không tấn công, không nhận sát thương
+                    fade -= dt;
+                    if (fade <= 0f) {
+                        spiritDeathFx.at(px, py, Mathf.random(45f), pal().light);
+                        dead = true;
+                    }
+                    return;
+                }
                 cd1 = Math.max(0f, cd1 - dt);
                 cd2 = Math.max(0f, cd2 - dt);
                 cd3 = Math.max(0f, cd3 - dt);
-                slashTimer -= edelta(); // cùng nhịp với reload của Emperical (có tính efficiency)
+                slashTimer -= dt; // chỉ phụ thuộc ReloadTier (qua interval()), không bị efficiency/Intrinsic ảnh hưởng
                 boostTimer -= dt;
 
                 // nhận sát thương từ kẻ địch ở gần
@@ -1008,8 +1001,7 @@ public class EmpericalTurret extends NevixTurret {
                     stored -= h;
                 }
                 if (health <= 0f) {
-                    spiritSpawnFx.at(px, py, 0f, pal().light);
-                    dead = true;
+                    die();
                     return;
                 }
 
@@ -1129,18 +1121,19 @@ public class EmpericalTurret extends NevixTurret {
 
             void draw() {
                 SwirdyTurret.SwirdyPalette p = pal();
+                float al = fading ? Mathf.clamp(fade / SPIRIT_FADE_TIME) : 1f; // độ hiện: 1 -> 0 khi chết
                 // quả cầu sét của Swirdy (drawHalo) + thanh kiếm nhỏ cầm tay
-                SwirdyTurret.drawHalo(p, px, py, facing, Time.time, 1f);
+                SwirdyTurret.drawHalo(p, px, py, facing, Time.time, al);
                 Draw.z(Layer.bullet + 3f);
-                drawBlade(px + Angles.trnsx(facing, 6f), py + Angles.trnsy(facing, 6f), facing, 20f, 1f, p);
+                drawBlade(px + Angles.trnsx(facing, 6f), py + Angles.trnsy(facing, 6f), facing, 20f, al, p);
 
                 float w = 12f, f = Mathf.clamp(health / maxHp());
-                Draw.color(Color.black, 0.7f);
+                Draw.color(Color.black, 0.7f * al);
                 Fill.rect(px, py + 12f, w, 2f);
-                Draw.color(p.mid);
+                Draw.color(p.mid, al);
                 Fill.rect(px - w / 2f + w * f / 2f, py + 12f, w * f, 2f);
                 if (stored > 0f) {
-                    Draw.color(p.core, 0.8f);
+                    Draw.color(p.core, 0.8f * al);
                     float sf = Mathf.clamp(stored / (maxHp() * 0.75f));
                     Fill.rect(px - w / 2f + w * sf / 2f, py + 14.2f, w * sf, 1.2f);
                 }
@@ -1158,21 +1151,27 @@ public class EmpericalTurret extends NevixTurret {
             float base = size * tilesize * 0.5f;
             float spin = Time.time * (0.4f + 2.2f * a);
 
-            // vòng ấn + cánh sao quay quanh: sáng và nhanh hơn theo buff Intrinsic
+            // vòng ấn + cánh sao quay quanh: chỉ hiện khi Spirit có thể tồn tại; sáng và nhanh hơn theo buff Intrinsic
+            haloFade = Mathf.approachDelta(haloFade, spiritsAllowed() ? 1f : 0f, 1f / HALO_FADE_TIME);
+            float h = Interp.smooth.apply(haloFade);
+            boolean halo = h > 0.01f;
             Draw.z(Layer.bullet + 2f);
             Draw.blend(Blending.additive);
-            Draw.color(p.outer, 0.22f + 0.3f * a);
-            Lines.stroke(1.6f + 1.6f * a);
-            Lines.circle(x, y, base * 1.45f);
-            Draw.color(p.mid, 0.3f + 0.35f * a);
-            Lines.stroke(1.2f);
-            Lines.poly(x, y, 4, base * 1.3f, spin);
-            Lines.poly(x, y, 4, base * 1.3f, -spin + 45f);
-            int spikes = 4 + Mathf.floor(a * 4f);
-            for (int k = 0; k < spikes; k++) {
-                float ang = Time.time * (0.8f + 1.5f * a) + k * 360f / spikes;
-                Draw.color(k % 2 == 0 ? p.core : p.light, 0.8f);
-                Drawf.tri(x + Angles.trnsx(ang, base * 1.45f), y + Angles.trnsy(ang, base * 1.45f), 2.2f, 7f + 5f * a, ang);
+            if (halo) {
+                float rs = 0.9f + 0.1f * h; // vòng nở dần ra khi hiện
+                Draw.color(p.outer, (0.22f + 0.3f * a) * h);
+                Lines.stroke(1.6f + 1.6f * a);
+                Lines.circle(x, y, base * 1.45f * rs);
+                Draw.color(p.mid, (0.3f + 0.35f * a) * h);
+                Lines.stroke(1.2f);
+                Lines.poly(x, y, 4, base * 1.3f * rs, spin);
+                Lines.poly(x, y, 4, base * 1.3f * rs, -spin + 45f);
+                int spikes = 4 + Mathf.floor(a * 4f);
+                for (int k = 0; k < spikes; k++) {
+                    float ang = Time.time * (0.8f + 1.5f * a) + k * 360f / spikes;
+                    Draw.color(k % 2 == 0 ? p.core : p.light, 0.8f * h);
+                    Drawf.tri(x + Angles.trnsx(ang, base * 1.45f * rs), y + Angles.trnsy(ang, base * 1.45f * rs), 2.2f, (7f + 5f * a) * h, ang);
+                }
             }
             if (target != null && hasAmmo()) { // điểm tụ lực ở nòng
                 float c = Mathf.clamp(atkCounter / baseReload());
@@ -1184,7 +1183,7 @@ public class EmpericalTurret extends NevixTurret {
             }
             Draw.blend();
             Draw.reset();
-            Drawf.light(x, y, base * (3f + 3f * a), p.light, 0.35f + 0.3f * a);
+            if (halo) Drawf.light(x, y, base * (3f + 3f * a), p.light, (0.35f + 0.3f * a) * h);
 
             for (int i = 0; i < blades.size; i++) blades.get(i).draw();
             for (int i = 0; i < spirits.size; i++) spirits.get(i).draw();
