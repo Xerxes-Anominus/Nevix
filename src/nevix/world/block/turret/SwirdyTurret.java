@@ -579,12 +579,12 @@ public class SwirdyTurret extends NevixTurret {
     swirdy_passive_skill;
 
     public final float[]
-    melee_reload = {90f, 75f, 60f},
-    melee_damage = {95f, 160f, 310f},
-    melee_bonus_slash_chance = {0f, 0.2f, 0.45f},
-    range_boost = {0, 16f, 40f},
-    reload_new = {80f, 65f, 50f},
-    damage = {35.5f, 54f, 82.5f};
+    melee_reload = {105f, 90f, 75f, 60f},
+    melee_damage = {95f, 160f, 310f, 550f},
+    melee_bonus_slash_chance = {0f, 0.2f, 0.35f, 0.55f},
+    range_boost = {0, 16f, 28f, 40f},
+    reload_new = {80f, 65f, 50f, 40f},
+    damage = {35.5f, 54f, 82.5f, 117f};
 
     public SwirdyTurret(String name){
         super(name);
