@@ -11,6 +11,7 @@ import arc.math.Interp;
 import arc.math.Mathf;
 import arc.math.geom.Intersector;
 import arc.scene.ui.layout.Table;
+import arc.struct.FloatSeq;
 import arc.struct.IntSet;
 import arc.struct.Seq;
 import arc.util.Time;
@@ -34,6 +35,7 @@ import mindustry.type.StatusEffect;
 import mindustry.ui.Bar;
 import mindustry.world.meta.Stat;
 import mindustry.world.meta.StatUnit;
+import nevix.PromotionSys;
 import nevix.world.meta.NevixStat;
 import nevix.world.meta.NevixStatUnit;
 
@@ -52,6 +54,8 @@ public class EmpericalTurret extends NevixTurret {
         MERGE_DIST = 12f * tilesize,
         MERGED_SLASH_SPEED = 36f, 
         SPIRIT_RESPAWN = 600f,
+        SPIRIT_BASE_STAT = 0.5f,
+        SPIRIT_POINT_BONUS = 0.025f,
         SPIRIT_FADE_TIME = 30f,
         HALO_FADE_TIME = 60f,
         SPIRIT_MIN_EFFICIENCY = 0.05f,
@@ -429,34 +433,34 @@ public class EmpericalTurret extends NevixTurret {
     emperical_sword_spirit_2;
     
     public void upgradeBranch() {
-        emperical_reload_0 = addUpgrade("emperical-reload-0", "", ItemStack.with(Items.copper, 200, Items.graphite, 150, Items.silicon, 100, Items.titanium, 100),
+        emperical_reload_0 = addUpgrade("emperical-reload-0", "", ItemStack.with(Items.copper, 800, Items.graphite, 600, Items.silicon, 400, Items.titanium, 400),
             (EmpericalTurretBuild b) -> b.ReloadTier = Math.max(b.ReloadTier, 1), (EmpericalTurretBuild b) -> b.ReloadTier = 0);
-        emperical_reload_1 = addUpgrade("emperical-reload-1", "", ItemStack.with(Items.graphite, 200, Items.silicon, 200, Items.titanium, 200, Items.thorium, 100),
+        emperical_reload_1 = addUpgrade("emperical-reload-1", "", ItemStack.with(Items.graphite, 800, Items.silicon, 800, Items.titanium, 800, Items.thorium, 400),
             (EmpericalTurretBuild b) -> b.ReloadTier = Math.max(b.ReloadTier, 2), (EmpericalTurretBuild b) -> b.ReloadTier = 0).levelAfter(emperical_reload_0);
-        emperical_reload_2 = addUpgrade("emperical-reload-2", "", ItemStack.with(Items.silicon, 300, Items.titanium, 300, Items.thorium, 200, Items.plastanium, 120),
+        emperical_reload_2 = addUpgrade("emperical-reload-2", "", ItemStack.with(Items.silicon, 1200, Items.titanium, 12000, Items.thorium, 800, Items.plastanium, 480),
             (EmpericalTurretBuild b) -> b.ReloadTier = Math.max(b.ReloadTier, 3), (EmpericalTurretBuild b) -> b.ReloadTier = 0).levelAfter(emperical_reload_1);
 
-        emperical_range = addUpgrade("emperical-range", "", ItemStack.with(Items.graphite, 200, Items.silicon, 200, Items.titanium, 250, Items.thorium, 100),
+        emperical_range = addUpgrade("emperical-range", "", ItemStack.with(Items.graphite, 800, Items.silicon, 800, Items.titanium, 1000, Items.thorium, 400),
             (EmpericalTurretBuild b) -> b.RangeBoosted = true, (EmpericalTurretBuild b) -> b.RangeBoosted = false);
 
-        emperical_damage_1 = addUpgrade("emperical-damage-1", "", ItemStack.with(Items.graphite, 200, Items.silicon, 200, Items.titanium, 200, Items.thorium, 100),
+        emperical_damage_1 = addUpgrade("emperical-damage-1", "", ItemStack.with(Items.graphite, 800, Items.silicon, 800, Items.titanium, 800, Items.thorium, 400),
             (EmpericalTurretBuild b) -> b.DamageTier = Math.max(b.DamageTier, 1), (EmpericalTurretBuild b) -> b.DamageTier = 0);
-        emperical_damage_2 = addUpgrade("emperical-damage-2", "", ItemStack.with(Items.silicon, 300, Items.titanium, 300, Items.thorium, 250, Items.plastanium, 150),
+        emperical_damage_2 = addUpgrade("emperical-damage-2", "", ItemStack.with(Items.silicon, 1200, Items.titanium, 1200, Items.thorium, 1000, Items.plastanium, 600),
             (EmpericalTurretBuild b) -> b.DamageTier = Math.max(b.DamageTier, 2), (EmpericalTurretBuild b) -> b.DamageTier = 0).levelAfter(emperical_damage_1);
 
-        emperical_intrinsic = addUpgrade("emperical-intrinsic", "", ItemStack.with(Items.silicon, 250, Items.titanium, 250, Items.thorium, 200, Items.plastanium, 100),
+        emperical_intrinsic = addUpgrade("emperical-intrinsic", "", ItemStack.with(Items.silicon, 1000, Items.titanium, 1000, Items.thorium, 800, Items.plastanium, 400),
             (EmpericalTurretBuild b) -> b.hasIntrinsic = true, (EmpericalTurretBuild b) -> b.hasIntrinsic = false);
 
-        emperical_charge_shoot_0 = addUpgrade("emperical-charge-shoot-0", "", ItemStack.with(Items.silicon, 250, Items.titanium, 250, Items.thorium, 150, Items.plastanium, 100),
+        emperical_charge_shoot_0 = addUpgrade("emperical-charge-shoot-0", "", ItemStack.with(Items.silicon, 1000, Items.titanium, 1000, Items.thorium, 600, Items.plastanium, 400),
             (EmpericalTurretBuild b) -> b.chargeTier = Math.max(b.chargeTier, 1), (EmpericalTurretBuild b) -> b.chargeTier = 0);
-        emperical_charge_shoot_1 = addUpgrade("emperical-charge-shoot-1", "", ItemStack.with(Items.silicon, 350, Items.thorium, 250, Items.plastanium, 200, Items.surgeAlloy, 100),
+        emperical_charge_shoot_1 = addUpgrade("emperical-charge-shoot-1", "", ItemStack.with(Items.silicon, 1400, Items.thorium, 1000, Items.plastanium, 800, Items.surgeAlloy, 400),
             (EmpericalTurretBuild b) -> b.chargeTier = Math.max(b.chargeTier, 2), (EmpericalTurretBuild b) -> b.chargeTier = 0).levelAfter(emperical_charge_shoot_0);
 
-        emperical_sword_spirit_0 = addUpgrade("emperical-sword-spirit-0", "", ItemStack.with(Items.silicon, 300, Items.thorium, 250, Items.plastanium, 150, Items.surgeAlloy, 100),
+        emperical_sword_spirit_0 = addUpgrade("emperical-sword-spirit-0", "", ItemStack.with(Items.silicon, 1200, Items.thorium, 1000, Items.plastanium, 600, Items.surgeAlloy, 400),
             (EmpericalTurretBuild b) -> b.spiritTier = Math.max(b.spiritTier, 1), (EmpericalTurretBuild b) -> b.spiritTier = 0);
-        emperical_sword_spirit_1 = addUpgrade("emperical-sword-spirit-1", "", ItemStack.with(Items.thorium, 300, Items.plastanium, 200, Items.surgeAlloy, 150),
+        emperical_sword_spirit_1 = addUpgrade("emperical-sword-spirit-1", "", ItemStack.with(PromotionSys.promotionStar, 5, Items.thorium, 1200, Items.plastanium, 800, Items.surgeAlloy, 600),
             (EmpericalTurretBuild b) -> b.spiritTier = Math.max(b.spiritTier, 2), (EmpericalTurretBuild b) -> b.spiritTier = 0).levelAfter(emperical_sword_spirit_0);
-        emperical_sword_spirit_2 = addUpgrade("emperical-sword-spirit-2", "", ItemStack.with(Items.thorium, 400, Items.plastanium, 300, Items.surgeAlloy, 250),
+        emperical_sword_spirit_2 = addUpgrade("emperical-sword-spirit-2", "", ItemStack.with(PromotionSys.promotionStar, 20, Items.thorium, 1600, Items.plastanium, 1200, Items.surgeAlloy, 1000),
             (EmpericalTurretBuild b) -> b.spiritTier = Math.max(b.spiritTier, 3), (EmpericalTurretBuild b) -> b.spiritTier = 0).levelAfter(emperical_sword_spirit_1);
     }
 
@@ -469,8 +473,9 @@ public class EmpericalTurret extends NevixTurret {
         public int spiritTier;
         
         public Teamc spiritTarget;
-        public float atkCounter, refreshTimer, spiritTargetTimer, sinceLaunch, intrinsicBuff, spiritRespawn;
+        public float atkCounter, refreshTimer, spiritTargetTimer, sinceLaunch, intrinsicBuff;
         public int spiritPoints;
+        public FloatSeq spiritRespawns = new FloatSeq();
         public float haloFade;
         public Seq<Blade> blades = new Seq<>();
         public Seq<Spirit> spirits = new Seq<>();
@@ -528,8 +533,8 @@ public class EmpericalTurret extends NevixTurret {
                     int count = SPIRIT_COUNT[spiritTier];
                     addBulletStatTable(table, bt -> {
                         addBulletStat(bt, NevixStat.swordSpiritCount, "" + count);
-                        addBulletStat(bt, NevixStat.swordSpiritHp, "5%");
-                        addBulletStat(bt, NevixStat.swordSpiritDamage, "10%");
+                        addBulletStat(bt, NevixStat.swordSpiritHp, Mathf.round(SPIRIT_BASE_STAT * 100f) + "%");
+                        addBulletStat(bt, NevixStat.swordSpiritDamage, Mathf.round(SPIRIT_BASE_STAT * 100f) + "%");
                         addBulletStat(bt, NevixStat.swordSpiritDps, "" + Mathf.round(SPIRIT_CONTACT_DPS));
                         addBulletStat(bt, NevixStat.none, "empericalSwordSpirit");
                     });
@@ -949,34 +954,38 @@ public class EmpericalTurret extends NevixTurret {
         }
 
         void updateSpirits(float dt) {
-            if (!spiritsAllowed()) {
-                for (int i = 0; i < spirits.size; i++) spirits.get(i).die();
-                spiritRespawn = 0f;
-            } else {
-                int want = Math.min(spiritPoints, SPIRIT_COUNT[Math.min(spiritTier, SPIRIT_COUNT.length - 1)]);
-                int alive = 0;
-                for (int i = 0; i < spirits.size; i++) if (!spirits.get(i).fading) alive++;
+            boolean allowed = spiritsAllowed();
+            int want = spiritTier > 0 ? Math.min(spiritPoints, SPIRIT_COUNT[Math.min(spiritTier, SPIRIT_COUNT.length - 1)]) : 0;
+            
+            if (!allowed) for (int i = 0; i < spirits.size; i++) spirits.get(i).die();
 
-                if (alive < want) {
-                    spiritRespawn += dt;
-                    if (spiritRespawn >= SPIRIT_RESPAWN || alive == 0) {
-                        spiritRespawn = 0f;
-                        Spirit sp = new Spirit();
-                        spiritSpawnFx.at(sp.px, sp.py, 0f, pal().light);
-                        spirits.add(sp);
-                    }
-                } else {
-                    spiritRespawn = 0f;
+            int alive = 0;
+            for (int i = 0; i < spirits.size; i++) if (!spirits.get(i).fading) alive++;
+            
+            while (alive + spiritRespawns.size < want) spiritRespawns.add(SPIRIT_RESPAWN);
+            while (alive + spiritRespawns.size > want && spiritRespawns.size > 0) spiritRespawns.pop();
+            
+            for (int i = 0; i < spiritRespawns.size; i++) {
+                spiritRespawns.set(i, Math.min(SPIRIT_RESPAWN, spiritRespawns.get(i) + dt));
+            }
+            
+            if (allowed) {
+                for (int i = spiritRespawns.size - 1; i >= 0; i--) {
+                    if (spiritRespawns.get(i) < SPIRIT_RESPAWN) continue;
+                    spiritRespawns.removeIndex(i);
+                    Spirit sp = new Spirit();
+                    spiritSpawnFx.at(sp.px, sp.py, 0f, pal().light);
+                    spirits.add(sp);
                 }
             }
 
             for (int i = 0; i < spirits.size; i++) spirits.get(i).update(dt);
             spirits.removeAll(s -> s.dead);
         }
-        
+
         float spiritBonus() {
             int spawnPoints = SPIRIT_COUNT[SPIRIT_COUNT.length - 1];
-            return 1f + 0.05f * Math.max(0, spiritPoints - spawnPoints);
+            return 1f + SPIRIT_POINT_BONUS * Math.max(0, spiritPoints - spawnPoints);
         }
 
         public class Spirit {
@@ -992,11 +1001,11 @@ public class EmpericalTurret extends NevixTurret {
             }
 
             float maxHp() {
-                return maxHealth() * 0.05f * spiritBonus();
+                return maxHealth() * SPIRIT_BASE_STAT * spiritBonus();
             }
 
             float dmg() {
-                return calcDamage() * 0.10f * spiritBonus();
+                return calcDamage() * SPIRIT_BASE_STAT * spiritBonus();
             }
 
             float interval() {
@@ -1006,6 +1015,7 @@ public class EmpericalTurret extends NevixTurret {
             void die() {
                 if (fading) return;
                 fading = true;
+                spiritRespawns.add(0f);
                 fade = SPIRIT_FADE_TIME;
                 dashT = 0f;
                 comboLeft = 0;
