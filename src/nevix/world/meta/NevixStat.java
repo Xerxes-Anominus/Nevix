@@ -47,5 +47,17 @@ public class NevixStat {
     bonusSlashChance = new Stat("bonus-slash-chance"),
     meleeLifesteal = new Stat("melee-lifesteal"),
     skillCost = new Stat("skill-cost"),
-    finalWaveChance = new Stat("final-wave-chance");
+    finalWaveChance = new Stat("final-wave-chance"),
+    
+    chargeTime = new Stat("charge-time"),
+    greatBladeChance = new Stat("great-blade-chance"),
+    greatBladeMultiplier = new Stat("great-blade-multiplier"),
+    intrinsicStep = new Stat("intrinsic-step"),
+    intrinsicMax = new Stat("intrinsic-max"),
+    intrinsicReset = new Stat("intrinsic-reset"),
+    swordSpiritCount = new Stat("sword-spirit-count"),
+    swordSpiritHp = new Stat("sword-spirit-hp"),
+    swordSpiritDamage = new Stat("sword-spirit-damage"),
+    swordSpiritDps = new Stat("sword-spirit-dps"),
+    slowAmount = new Stat("slow-amount");
 }
