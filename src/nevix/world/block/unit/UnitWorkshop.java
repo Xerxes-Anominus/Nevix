@@ -447,6 +447,8 @@ public class UnitWorkshop extends UnitFactory{
                 if(p.flip) c.flip();
                 c.mirror = false;
                 c.otherSide = -1;
+                //đã bỏ cặp trái/phải nên phải tắt luân phiên, nếu không vũ khí lật (nửa trái) sẽ bị chặn bắn
+                c.alternate = false;
                 c.x = shop.cellToPos(p.cx);
                 c.y = shop.cellToPos(p.cy);
                 list.add(c);
@@ -521,7 +523,8 @@ public class UnitWorkshop extends UnitFactory{
 
         //trạng thái UI (không lưu)
         protected BaseDialog dialog;
-        protected boolean buildTab;
+        protected int tab; //0: chính, 1: chế tạo, 2: unit đã tạo
+        protected int selectedUnit = -1;
         protected int tabCategory;
         protected PartRef weaponBrush;
         protected boolean mirrorPlace = true;
@@ -765,7 +768,7 @@ public class UnitWorkshop extends UnitFactory{
                     if(!isValid()) dialog.hide();
                 });
             }
-            buildTab = false;
+            tab = 0;
             rebuildDialog();
             dialog.show();
         }
@@ -773,7 +776,9 @@ public class UnitWorkshop extends UnitFactory{
         protected void rebuildDialog(){
             dialog.cont.clear();
             Table content = new Table();
-            if(buildTab) buildBuildTab(content); else buildMainTab(content);
+            if(tab == 1) buildBuildTab(content);
+            else if(tab == 2) buildUnitsTab(content);
+            else buildMainTab(content);
             dialog.cont.add(new ScrollPane(content)).grow();
         }
 
@@ -799,48 +804,27 @@ public class UnitWorkshop extends UnitFactory{
         /* ---------- tab chính ---------- */
 
         protected void buildMainTab(Table root){
-            //cột trái: xanh dương (giá/thời gian) - vàng (xem trước) - xanh lá (nút sang tab build)
+            //cột trái: vàng (xem trước) - xanh lá (nút sang tab build) - nút sang tab unit
             root.table(left -> {
                 left.top();
-                left.table(Styles.black6, t -> {
-                    t.margin(8f);
-                    watch(t, () -> costTable(t));
-                }).growX().minHeight(120f).row();
-
-                left.table(Styles.black6, t -> t.add(new Preview(UnitWorkshop.this, () -> design)).size(160f)).growX().padTop(6f).row();
+                left.table(Styles.black6, t -> t.add(new Preview(UnitWorkshop.this, () -> design)).size(200f)).growX().row();
 
                 left.button(tr("workshop.build", "Chế tạo"), Icon.hammer, () -> {
-                    buildTab = true;
+                    tab = 1;
+                    rebuildDialog();
+                }).growX().height(52f).padTop(6f).row();
+
+                left.button(tr("workshop.units", "Unit đã tạo"), Icon.units, () -> {
+                    tab = 2;
                     rebuildDialog();
                 }).growX().height(52f).padTop(6f);
             }).width(230f).top().padRight(8f);
 
-            //cột phải: trắng (danh sách unit sống) - tím (hủy toàn bộ)
-            root.table(right -> {
-                right.top();
-                right.table(Styles.black6, t -> {
-                    Table inner = new Table();
-                    inner.top().left();
-                    final int[] sig = {Integer.MIN_VALUE};
-                    inner.update(() -> {
-                        int now = aliveSignature();
-                        if(now != sig[0]){
-                            sig[0] = now;
-                            inner.clear();
-                            fillAlive(inner);
-                        }
-                    });
-                    ScrollPane sp = new ScrollPane(inner);
-                    sp.setScrollingDisabled(true, false);
-                    t.add(sp).grow();
-                }).size(260f, 300f).row();
-
-                right.button(tr("workshop.killall", "Hủy toàn bộ unit"), Icon.trash, () ->
-                    ui.showConfirm(tr("workshop.killall", "Hủy toàn bộ unit"),
-                        tr("workshop.killall.confirm", "Hủy toàn bộ unit do xưởng này tạo ra?"),
-                        () -> configure(Integer.valueOf(-1)))
-                ).growX().height(52f).padTop(6f);
-            }).top();
+            //cột phải: xanh dương (giá + thời gian build)
+            root.table(Styles.black6, right -> {
+                right.margin(10f);
+                watch(right, () -> costTable(right));
+            }).size(260f, 300f).top();
         }
 
         protected void costTable(Table t){
@@ -886,7 +870,7 @@ public class UnitWorkshop extends UnitFactory{
                 if(u == null || !u.isValid()) continue;
                 any = true;
 
-                t.button(b -> {
+                Button btn = t.button(b -> {
                     b.left();
                     b.image(u.type.uiIcon).size(36f).padRight(8f);
                     b.table(info -> {
@@ -899,7 +883,9 @@ public class UnitWorkshop extends UnitFactory{
                         hp.touchable = Touchable.disabled;
                         info.add(hp).height(12f).growX();
                     }).growX();
-                }, Styles.flatt, () -> showUnit(id)).growX().minHeight(56f).pad(2f).row();
+                }, Styles.clearTogglet, () -> selectedUnit = id).growX().minHeight(56f).pad(2f).get();
+                btn.update(() -> btn.setChecked(selectedUnit == id));
+                t.row();
             }
 
             if(!any){
@@ -919,44 +905,99 @@ public class UnitWorkshop extends UnitFactory{
             }
         }
 
-        protected void showUnit(int id){
-            final Unit first = Groups.unit.getByID(id);
-            if(first == null || !first.isValid()) return;
+        /* ---------- tab unit ---------- */
 
-            BaseDialog d = new BaseDialog(first.type.localizedName);
-            d.addCloseButton();
+        protected void buildUnitsTab(Table root){
+            selectedUnit = -1;
 
-            d.cont.table(Styles.black6, t -> {
-                t.margin(10f);
-                t.image(first.type.uiIcon).size(72f).padRight(12f);
-                t.table(info -> {
-                    info.left();
-                    Bar hp = new Bar(() -> {
-                        Unit u = Groups.unit.getByID(id);
-                        return u == null ? "" : Strings.fixed(Math.max(u.health, 0f), 0) + " / " + Strings.fixed(u.maxHealth, 0);
-                    }, () -> Pal.health, () -> {
-                        Unit u = Groups.unit.getByID(id);
-                        return u == null ? 0f : u.healthf();
+            //trái: trắng (danh sách unit sống) - tím (hủy toàn bộ) - quay lại
+            root.table(left -> {
+                left.top();
+                left.table(Styles.black6, t -> {
+                    Table inner = new Table();
+                    inner.top().left();
+                    final int[] sig = {Integer.MIN_VALUE};
+                    inner.update(() -> {
+                        int now = aliveSignature();
+                        if(now != sig[0]){
+                            sig[0] = now;
+                            inner.clear();
+                            fillAlive(inner);
+                        }
                     });
-                    info.add(hp).height(24f).width(220f).row();
-                    for(int i = 0; i < 5; i++){
-                        final int which = i;
-                        info.label(() -> unitStat(id, which)).left().padTop(2f).row();
+                    ScrollPane sp = new ScrollPane(inner);
+                    sp.setScrollingDisabled(true, false);
+                    t.add(sp).grow();
+                }).size(260f, 300f).row();
+
+                left.button(tr("workshop.killall", "Hủy toàn bộ unit"), Icon.trash, () ->
+                    ui.showConfirm(tr("workshop.killall", "Hủy toàn bộ unit"),
+                        tr("workshop.killall.confirm", "Hủy toàn bộ unit do xưởng này tạo ra?"),
+                        () -> {
+                            configure(Integer.valueOf(-1));
+                            selectedUnit = -1;
+                        })
+                ).growX().height(52f).padTop(6f).row();
+
+                left.button(tr("workshop.back", "Tab chính"), Icon.left, () -> {
+                    tab = 0;
+                    rebuildDialog();
+                }).growX().height(52f).padTop(6f);
+            }).top().padRight(8f);
+
+            //phải: thông tin unit đang chọn, nút tự hủy ở cuối
+            root.table(Styles.black6, right -> {
+                right.margin(10f);
+                final int[] sig = {Integer.MIN_VALUE};
+                right.update(() -> {
+                    Unit u = selectedUnit < 0 ? null : Groups.unit.getByID(selectedUnit);
+                    int now = u != null && u.isValid() ? selectedUnit : -1;
+                    if(now < 0) selectedUnit = -1;
+                    if(now != sig[0]){
+                        sig[0] = now;
+                        right.clear();
+                        fillStatus(right, now);
                     }
                 });
-            }).row();
+            }).size(260f, 300f).top();
+        }
 
-            //nút tự hủy ở cuối
-            d.cont.button(tr("workshop.selfdestruct", "Tự hủy"), Icon.trash, () -> {
-                configure(Integer.valueOf(id));
-                d.hide();
-            }).size(240f, 56f).padTop(10f);
+        protected void fillStatus(Table t, final int id){
+            t.top();
 
-            d.update(() -> {
+            Unit first = id < 0 ? null : Groups.unit.getByID(id);
+            if(first == null){
+                t.add(tr("workshop.pick", "Chọn một unit trong danh sách\nđể xem thông tin.")).color(Color.lightGray).center();
+                return;
+            }
+
+            t.table(head -> {
+                head.left();
+                head.image(first.type.uiIcon).size(48f).padRight(8f);
+                head.add("#" + id + "\n" + first.type.localizedName).left();
+            }).growX().row();
+
+            Bar hp = new Bar(() -> {
                 Unit u = Groups.unit.getByID(id);
-                if(u == null || !u.isValid()) d.hide();
+                return u == null ? "" : Strings.fixed(Math.max(u.health, 0f), 0) + " / " + Strings.fixed(u.maxHealth, 0);
+            }, () -> Pal.health, () -> {
+                Unit u = Groups.unit.getByID(id);
+                return u == null ? 0f : u.healthf();
             });
-            d.show();
+            t.add(hp).height(24f).growX().padTop(8f).row();
+
+            for(int i = 0; i < 5; i++){
+                final int which = i;
+                t.label(() -> unitStat(id, which)).left().padTop(2f).row();
+            }
+
+            //đẩy nút tự hủy xuống cuối
+            t.add().growY().row();
+
+            t.button(tr("workshop.selfdestruct", "Tự hủy"), Icon.trash, () -> {
+                configure(Integer.valueOf(id));
+                selectedUnit = -1;
+            }).growX().height(52f);
         }
 
         /* ---------- tab build ---------- */
@@ -977,7 +1018,7 @@ public class UnitWorkshop extends UnitFactory{
                     btns.defaults().growX().height(44f).pad(2f);
                     btns.button(tr("workshop.clear", "Xóa vũ khí"), Icon.trash, () -> edit(d -> d.weapons.clear()));
                     btns.button(tr("workshop.back", "Tab chính"), Icon.left, () -> {
-                        buildTab = false;
+                        tab = 0;
                         rebuildDialog();
                     });
                 }).growX().padTop(4f);
