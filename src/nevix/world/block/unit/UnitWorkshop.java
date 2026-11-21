@@ -16,6 +16,7 @@ import arc.scene.event.ClickListener;
 import arc.scene.event.InputEvent;
 import arc.scene.event.Touchable;
 import arc.scene.ui.Button;
+import arc.scene.ui.CheckBox;
 import arc.scene.ui.ScrollPane;
 import arc.scene.ui.TextButton;
 import arc.scene.ui.layout.Scl;
@@ -35,7 +36,6 @@ import mindustry.ctype.UnlockableContent;
 import mindustry.entities.abilities.Ability;
 import mindustry.entities.units.WeaponMount;
 import mindustry.game.EventType.UnitCreateEvent;
-import mindustry.gen.Building;
 import mindustry.gen.Groups;
 import mindustry.gen.Icon;
 import mindustry.gen.Unit;
@@ -73,15 +73,23 @@ import static mindustry.Vars.*;
  * được thay bằng những linh kiện người chơi chọn.
  *
  * Giá / thời gian của từng linh kiện được suy ra từ công thức thật của unit nguồn
- * (UnitFactory.plans + Reconstructor), rồi chia theo tỉ lệ weaponShare / abilityShare.
+ * (UnitFactory.plans + Reconstructor):
+ *  - Mẫu = templateShare (50%) giá và thời gian của unit đó.
+ *  - Mỗi vũ khí = weaponShare (20%), mỗi ability = abilityShare (20%) của unit sở hữu nó.
+ *  - Linh kiện thừa thứ x so với sức chứa của mẫu: 100 + 20x %.
+ *  - Mỗi chỉnh sửa khác bản gốc của một vũ khí: +5%.
  */
 public class UnitWorkshop extends UnitFactory{
-    /** Phần giá trị của một unit nguồn được tính cho toàn bộ vũ khí của nó. */
-    public float weaponShare = 0.4f;
-    /** Phần giá trị của một unit nguồn được tính cho toàn bộ abilities của nó. */
+    /** Phần giá / thời gian của unit gốc được tính cho Mẫu. */
+    public float templateShare = 0.5f;
+    /** Phần giá / thời gian của unit sở hữu được tính cho MỖI vũ khí lấy từ nó. */
+    public float weaponShare = 0.2f;
+    /** Phần giá / thời gian của unit sở hữu được tính cho MỖI ability lấy từ nó. */
     public float abilityShare = 0.2f;
-    /** Hệ số cho linh kiện vượt sức chứa của mẫu (1.2 = +20%). */
-    public float overflowPenalty = 1.2f;
+    /** Linh kiện thừa thứ x (so với sức chứa của mẫu) có giá 100 + overflowStep * x * 100 %. */
+    public float overflowStep = 0.2f;
+    /** Mỗi chỉnh sửa khác bản gốc của một vũ khí làm giá / thời gian của vũ khí đó tăng thêm chừng này. */
+    public float modifyStep = 0.05f;
     /** Item dùng tính giá khi không tìm thấy công thức của unit (unit của mod chẳng hạn). */
     public Item fallbackItem = Items.silicon;
     /** Số linh kiện tối đa mỗi loại (tối đa 255). */
@@ -211,29 +219,107 @@ public class UnitWorkshop extends UnitFactory{
         return c;
     }
 
-    public float bodyShare(UnitType t){
-        return 1f - (t.weapons.size > 0 ? weaponShare : 0f) - (t.abilities.size > 0 ? abilityShare : 0f);
-    }
-
     public Cost bodyCost(UnitType t){
-        return baseCost(t).scaled(bodyShare(t));
+        return baseCost(t).scaled(templateShare);
     }
 
     public Cost weaponCost(UnitType t){
-        return baseCost(t).scaled(weaponShare / Math.max(1, t.weapons.size));
+        return baseCost(t).scaled(weaponShare);
     }
 
     public Cost abilityCost(UnitType t){
-        return baseCost(t).scaled(abilityShare / Math.max(1, t.abilities.size));
+        return baseCost(t).scaled(abilityShare);
+    }
+
+    /* ------------------------------------------------------------------ */
+    /*  Thuộc tính chỉnh sửa của từng vũ khí                               */
+    /* ------------------------------------------------------------------ */
+
+    public static final int PROP_ROTATE = 0, PROP_ROTATE_SPEED = 1, PROP_ROTATION_LIMIT = 2, PROP_BASE_ROTATION = 3,
+        PROP_ALTERNATE = 4, PROP_RELOAD = 5, PROP_INACCURACY = 6, PROP_SHOOT_CONE = 7;
+
+    public static class Prop{
+        public final String key, def;
+        public final boolean bool, mirror;
+        public final float min, max, step;
+
+        public Prop(String key, String def, boolean bool, boolean mirror, float min, float max, float step){
+            this.key = key;
+            this.def = def;
+            this.bool = bool;
+            this.mirror = mirror;
+            this.min = min;
+            this.max = max;
+            this.step = step;
+        }
+    }
+
+    /** mirror = true: khi sửa cả cặp đối xứng thì bản bên kia nhận giá trị đảo dấu (góc). */
+    public static final Prop[] props = {
+        new Prop("workshop.p.rotate", "Quay theo mục tiêu", true, false, 0, 1, 1),
+        new Prop("workshop.p.rotatespeed", "Tốc độ quay", false, false, 1, 60, 1),
+        new Prop("workshop.p.rotationlimit", "Giới hạn góc quay", false, false, 0, 360, 15),
+        new Prop("workshop.p.baserotation", "Góc gốc", false, true, -180, 180, 5),
+        new Prop("workshop.p.alternate", "Bắn luân phiên (cần cặp đối xứng)", true, false, 0, 1, 1),
+        new Prop("workshop.p.reload", "Thời gian nạp", false, false, 5, 600, 5),
+        new Prop("workshop.p.inaccuracy", "Độ lệch đạn", false, false, 0, 45, 1),
+        new Prop("workshop.p.shootcone", "Góc cho phép bắn", false, false, 1, 180, 1)
+    };
+
+    public static float getValue(Weapon w, int prop){
+        switch(prop){
+            case PROP_ROTATE: return w.rotate ? 1f : 0f;
+            case PROP_ROTATE_SPEED: return w.rotateSpeed;
+            case PROP_ROTATION_LIMIT: return w.rotationLimit;
+            case PROP_BASE_ROTATION: return w.baseRotation;
+            case PROP_ALTERNATE: return w.alternate ? 1f : 0f;
+            case PROP_RELOAD: return w.reload;
+            case PROP_INACCURACY: return w.inaccuracy;
+            default: return w.shootCone;
+        }
+    }
+
+    public static void setValue(Weapon w, int prop, float v){
+        switch(prop){
+            case PROP_ROTATE: w.rotate = v >= 0.5f; break;
+            case PROP_ROTATE_SPEED: w.rotateSpeed = v; break;
+            case PROP_ROTATION_LIMIT: w.rotationLimit = v >= 360f ? 361f : v; break;
+            case PROP_BASE_ROTATION: w.baseRotation = v; break;
+            case PROP_ALTERNATE: w.alternate = v >= 0.5f; break;
+            case PROP_RELOAD: w.reload = v; break;
+            case PROP_INACCURACY: w.inaccuracy = v; break;
+            default: w.shootCone = v; break;
+        }
+    }
+
+    public static boolean sameValue(int prop, float a, float b){
+        if(prop == PROP_ROTATION_LIMIT){
+            a = Math.min(a, 360f);
+            b = Math.min(b, 360f);
+        }
+        return Math.abs(a - b) < 0.001f;
+    }
+
+    public static String formatProp(int prop, float v){
+        switch(prop){
+            case PROP_ROTATE:
+            case PROP_ALTERNATE: return v >= 0.5f ? "bật" : "tắt";
+            case PROP_ROTATION_LIMIT: return v >= 360f ? "360°+" : Strings.fixed(v, 0) + "°";
+            case PROP_BASE_ROTATION:
+            case PROP_SHOOT_CONE: return Strings.fixed(v, 0) + "°";
+            case PROP_INACCURACY: return Strings.fixed(v, 1) + "°";
+            case PROP_RELOAD: return Strings.fixed(v / 60f, 2) + "s";
+            default: return Strings.fixed(v, 0);
+        }
     }
 
     /* ------------------------------------------------------------------ */
     /*  Vẽ                                                                 */
     /* ------------------------------------------------------------------ */
 
-    static void drawRegion(TextureRegion r, float x, float y, float scale, boolean flip){
+    static void drawRegion(TextureRegion r, float x, float y, float scale, boolean flip, float rotation){
         if(r == null || !r.found()) return;
-        Draw.rect(r, x, y, r.width * Draw.scl * scale * (flip ? -1f : 1f), r.height * Draw.scl * scale);
+        Draw.rect(r, x, y, r.width * Draw.scl * scale * (flip ? -1f : 1f), r.height * Draw.scl * scale, rotation);
     }
 
     /** Vẽ thân mẫu + vũ khí đã đặt. 1 pixel của game = scale đơn vị UI. */
@@ -241,17 +327,18 @@ public class UnitWorkshop extends UnitFactory{
         UnitType t = d.template;
         if(t == null) return;
 
-        drawRegion(t.outlineRegion, cx, cy, scale, false);
-        drawRegion(t.region, cx, cy, scale, false);
-        drawRegion(t.cellRegion, cx, cy, scale, false);
+        drawRegion(t.outlineRegion, cx, cy, scale, false, 0f);
+        drawRegion(t.region, cx, cy, scale, false, 0f);
+        drawRegion(t.cellRegion, cx, cy, scale, false, 0f);
 
         for(WeaponPart p : d.weapons){
             Weapon w = Design.weaponOf(p);
             float wx = cx + cellToPos(p.cx) * scale;
             float wy = cy + cellToPos(p.cy) * scale;
             boolean fl = w.flipSprite != p.flip;
-            drawRegion(w.outlineRegion, wx, wy, scale, fl);
-            drawRegion(w.region, wx, wy, scale, fl);
+            float rot = p.has(PROP_BASE_ROTATION) ? p.over[PROP_BASE_ROTATION] : p.defs[PROP_BASE_ROTATION];
+            drawRegion(w.outlineRegion, wx, wy, scale, fl, rot);
+            drawRegion(w.region, wx, wy, scale, fl, rot);
         }
     }
 
@@ -313,12 +400,46 @@ public class UnitWorkshop extends UnitFactory{
     public static class WeaponPart extends PartRef{
         public int cx, cy;
         public boolean flip;
+        /** Các vũ khí đặt cùng lúc bằng "Đối xứng" có chung số này (>= 0). */
+        public int pair = -1;
+        /** Bit i bật = thuộc tính i bị chỉnh khác bản gốc, giá trị nằm ở over[i]. */
+        public int mask;
+        public final float[] over = new float[props.length];
+        /** Giá trị gốc của từng thuộc tính (đã tính cả việc lật bên trái). */
+        public final float[] defs = new float[props.length];
+        public boolean donorAlternate;
 
         public WeaponPart(UnitType unit, int index, int cx, int cy, boolean flip){
             super(unit, index);
             this.cx = cx;
             this.cy = cy;
             this.flip = flip;
+
+            Weapon b = Design.weaponOf(this).copy();
+            if(flip) b.flip();
+            for(int i = 0; i < props.length; i++) defs[i] = getValue(b, i);
+            donorAlternate = b.alternate;
+        }
+
+        public boolean has(int prop){
+            return (mask & (1 << prop)) != 0;
+        }
+
+        public void set(int prop, float v){
+            mask |= 1 << prop;
+            over[prop] = v;
+        }
+
+        public void clear(int prop){
+            mask &= ~(1 << prop);
+        }
+
+        public WeaponPart copy(){
+            WeaponPart c = new WeaponPart(unit, index, cx, cy, flip);
+            c.pair = pair;
+            c.mask = mask;
+            System.arraycopy(over, 0, c.over, 0, over.length);
+            return c;
         }
     }
 
@@ -332,6 +453,9 @@ public class UnitWorkshop extends UnitFactory{
     }
 
     public static class Design{
+        /** Phiên bản định dạng lưu; thiết kế lưu bằng bản cũ sẽ bị bỏ qua. */
+        public static final int FORMAT = 2;
+
         public UnitType template;
         public final Seq<PartRef> abilities = new Seq<>();
         public final Seq<WeaponPart> weapons = new Seq<>();
@@ -348,14 +472,82 @@ public class UnitWorkshop extends UnitFactory{
             Design d = new Design();
             d.template = template;
             for(PartRef a : abilities) d.abilities.add(new PartRef(a.unit, a.index));
-            for(WeaponPart w : weapons) d.weapons.add(new WeaponPart(w.unit, w.index, w.cx, w.cy, w.flip));
+            for(WeaponPart w : weapons) d.weapons.add(w.copy());
             return d;
+        }
+
+        /** Vũ khí đối xứng với vũ khí idx (cùng pair), -1 nếu không có. */
+        public int partnerIndex(int idx){
+            int pr = weapons.get(idx).pair;
+            if(pr < 0) return -1;
+            for(int j = 0; j < weapons.size; j++){
+                if(j != idx && weapons.get(j).pair == pr) return j;
+            }
+            return -1;
+        }
+
+        public int nextPair(){
+            int m = -1;
+            for(WeaponPart p : weapons) m = Math.max(m, p.pair);
+            return m + 1;
+        }
+
+        public int partAt(int cx, int cy){
+            for(int i = 0; i < weapons.size; i++){
+                if(weapons.get(i).cx == cx && weapons.get(i).cy == cy) return i;
+            }
+            return -1;
+        }
+
+        public float defaultValue(int idx, int prop){
+            WeaponPart p = weapons.get(idx);
+            //luân phiên chỉ có nghĩa khi có cặp đối xứng
+            if(prop == PROP_ALTERNATE) return p.donorAlternate && partnerIndex(idx) >= 0 ? 1f : 0f;
+            return p.defs[prop];
+        }
+
+        public float value(int idx, int prop){
+            WeaponPart p = weapons.get(idx);
+            return p.has(prop) ? p.over[prop] : defaultValue(idx, prop);
+        }
+
+        /** Số chỉnh sửa khác bản gốc của vũ khí idx. */
+        public int modCount(int idx){
+            return Integer.bitCount(weapons.get(idx).mask);
+        }
+
+        /** Bỏ các chỉnh sửa mà giá trị đã trùng bản gốc (để không bị tính giá oan). */
+        public void normalize(){
+            for(int i = 0; i < weapons.size; i++){
+                WeaponPart p = weapons.get(i);
+                for(int k = 0; k < props.length; k++){
+                    if(p.has(k) && sameValue(k, p.over[k], defaultValue(i, k))) p.clear(k);
+                }
+            }
+        }
+
+        public void setProp(int idx, int prop, float v, boolean both){
+            weapons.get(idx).set(prop, v);
+            if(both){
+                int j = partnerIndex(idx);
+                if(j >= 0) weapons.get(j).set(prop, props[prop].mirror ? -v : v);
+            }
+            normalize();
+        }
+
+        public void resetProp(int idx, int prop, boolean both){
+            weapons.get(idx).clear(prop);
+            if(both){
+                int j = partnerIndex(idx);
+                if(j >= 0) weapons.get(j).clear(prop);
+            }
         }
 
         public byte[] write(){
             try{
                 ByteArrayOutputStream bo = new ByteArrayOutputStream();
                 DataOutputStream out = new DataOutputStream(bo);
+                out.writeByte(FORMAT);
                 out.writeUTF(template == null ? "" : template.name);
                 out.writeByte(abilities.size);
                 for(PartRef a : abilities){
@@ -369,6 +561,11 @@ public class UnitWorkshop extends UnitFactory{
                     out.writeShort(w.cx);
                     out.writeShort(w.cy);
                     out.writeBoolean(w.flip);
+                    out.writeShort(w.pair);
+                    out.writeShort(w.mask);
+                    for(int k = 0; k < props.length; k++){
+                        if(w.has(k)) out.writeFloat(w.over[k]);
+                    }
                 }
                 return bo.toByteArray();
             }catch(IOException e){
@@ -388,6 +585,7 @@ public class UnitWorkshop extends UnitFactory{
 
             try{
                 DataInputStream in = new DataInputStream(new ByteArrayInputStream(data));
+                if(in.readUnsignedByte() != FORMAT) return d;
                 UnitType tpl = unitByName(in.readUTF());
                 d.template = (!filter || shop.canUse(tpl)) ? tpl : null;
 
@@ -410,17 +608,33 @@ public class UnitWorkshop extends UnitFactory{
                     int cx = in.readUnsignedShort();
                     int cy = in.readUnsignedShort();
                     boolean flip = in.readBoolean();
+                    int pair = in.readShort();
+                    int mask = in.readUnsignedShort();
+                    float[] vals = new float[props.length];
+                    for(int k = 0; k < props.length; k++){
+                        if((mask & (1 << k)) != 0) vals[k] = in.readFloat();
+                    }
                     if(u == null || idx >= u.weapons.size || cx >= n || cy >= n || d.weapons.size >= limit) continue;
                     if(filter && !shop.canUse(u)) continue;
-                    d.weapons.add(new WeaponPart(u, idx, cx, cy, flip));
+
+                    WeaponPart wp = new WeaponPart(u, idx, cx, cy, flip);
+                    wp.pair = pair;
+                    for(int k = 0; k < props.length; k++){
+                        if((mask & (1 << k)) != 0) wp.set(k, Mathf.clamp(vals[k], props[k].min, k == PROP_ROTATION_LIMIT ? 361f : props[k].max));
+                    }
+                    d.weapons.add(wp);
                 }
+                d.normalize();
             }catch(Exception e){
                 Log.err(e);
             }
             return d;
         }
 
-        /** Tổng giá: linh kiện thừa so với sức chứa của mẫu bị nhân overflowPenalty (đặt trước = dựng trước). */
+        /**
+         * Tổng giá. Linh kiện (đặt trước = dựng trước) thứ x vượt sức chứa của mẫu có giá 100 + 20x %;
+         * mỗi chỉnh sửa khác bản gốc của vũ khí cộng thêm 5% (cộng dồn với phần vượt, cùng tính trên giá gốc).
+         */
         public Cost cost(UnitWorkshop shop){
             Cost total = new Cost();
             if(template == null) return total;
@@ -431,10 +645,12 @@ public class UnitWorkshop extends UnitFactory{
             int capW = template.weapons.size;
 
             for(int i = 0; i < abilities.size; i++){
-                total.add(shop.abilityCost(abilities.get(i).unit), i >= capA ? shop.overflowPenalty : 1f);
+                int x = Math.max(0, i + 1 - capA);
+                total.add(shop.abilityCost(abilities.get(i).unit), 1f + shop.overflowStep * x);
             }
             for(int i = 0; i < weapons.size; i++){
-                total.add(shop.weaponCost(weapons.get(i).unit), i >= capW ? shop.overflowPenalty : 1f);
+                int x = Math.max(0, i + 1 - capW);
+                total.add(shop.weaponCost(weapons.get(i).unit), 1f + shop.overflowStep * x + shop.modifyStep * modCount(i));
             }
             return total;
         }
@@ -447,11 +663,23 @@ public class UnitWorkshop extends UnitFactory{
                 if(p.flip) c.flip();
                 c.mirror = false;
                 c.otherSide = -1;
-                //đã bỏ cặp trái/phải nên phải tắt luân phiên, nếu không vũ khí lật (nửa trái) sẽ bị chặn bắn
                 c.alternate = false;
+                for(int k = 0; k < props.length; k++){
+                    if(k != PROP_ALTERNATE && p.has(k)) setValue(c, k, p.over[k]);
+                }
                 c.x = shop.cellToPos(p.cx);
                 c.y = shop.cellToPos(p.cy);
                 list.add(c);
+            }
+
+            //bắn luân phiên chỉ hoạt động khi hai vũ khí của cặp đối xứng cùng bật; không thì bắn đồng thời
+            //(alternate phải tắt, nếu không vũ khí lật nửa trái sẽ không bao giờ bắn)
+            for(int i = 0; i < list.size; i++){
+                int j = partnerIndex(i);
+                if(j >= 0 && value(i, PROP_ALTERNATE) >= 0.5f && value(j, PROP_ALTERNATE) >= 0.5f){
+                    list.get(i).alternate = true;
+                    list.get(i).otherSide = j;
+                }
             }
 
             unit.mounts = new WeaponMount[list.size];
@@ -525,6 +753,9 @@ public class UnitWorkshop extends UnitFactory{
         protected BaseDialog dialog;
         protected int tab; //0: chính, 1: chế tạo, 2: unit đã tạo
         protected int selectedUnit = -1;
+        protected int selectedPart = -1;
+        protected boolean editPair = true;
+        protected Runnable listFill;
         protected int tabCategory;
         protected PartRef weaponBrush;
         protected boolean mirrorPlace = true;
@@ -798,6 +1029,7 @@ public class UnitWorkshop extends UnitFactory{
         protected void edit(Cons<Design> change){
             Design d = design.copy();
             change.get(d);
+            d.normalize();
             configure(d.write());
         }
 
@@ -1016,7 +1248,10 @@ public class UnitWorkshop extends UnitFactory{
                 left.check(tr("workshop.mirror", "Đối xứng khi đặt vũ khí"), mirrorPlace, v -> mirrorPlace = v).left().padTop(4f).row();
                 left.table(btns -> {
                     btns.defaults().growX().height(44f).pad(2f);
-                    btns.button(tr("workshop.clear", "Xóa vũ khí"), Icon.trash, () -> edit(d -> d.weapons.clear()));
+                    btns.button(tr("workshop.clear", "Xóa vũ khí"), Icon.trash, () -> {
+                        selectedPart = -1;
+                        edit(d -> d.weapons.clear());
+                    });
                     btns.button(tr("workshop.back", "Tab chính"), Icon.left, () -> {
                         tab = 0;
                         rebuildDialog();
@@ -1031,12 +1266,14 @@ public class UnitWorkshop extends UnitFactory{
                 final Table list = new Table();
                 list.top().left();
                 final Runnable fill = () -> fillCategory(list, donors);
+                listFill = fill;
 
                 right.table(tabs -> {
                     String[] names = {
                         tr("workshop.template", "Mẫu"),
                         tr("workshop.abilities", "Ability"),
-                        tr("workshop.weapons", "Vũ khí")
+                        tr("workshop.weapons", "Vũ khí"),
+                        tr("workshop.tweak", "Sửa")
                     };
                     for(int i = 0; i < names.length; i++){
                         final int idx = i;
@@ -1080,6 +1317,10 @@ public class UnitWorkshop extends UnitFactory{
                             () -> edit(d -> d.abilities.add(new PartRef(u, index))));
                     }
                 }
+            }else if(tabCategory == 3){
+                final Table body = new Table();
+                watch(body, () -> fillEdit(body));
+                t.add(body).growX().top();
             }else{
                 for(UnitType u : donors){
                     boolean head = false;
@@ -1104,6 +1345,77 @@ public class UnitWorkshop extends UnitFactory{
             }
         }
 
+        /** Bảng chỉnh sửa chi tiết vũ khí đang chọn (mỗi chỉnh sửa khác bản gốc: +5% giá và thời gian). */
+        protected void fillEdit(Table t){
+            t.top().left();
+
+            final int idx = selectedPart;
+            if(idx < 0 || idx >= design.weapons.size){
+                t.add(tr("workshop.pickweapon", "Bấm vào ô có vũ khí trong vùng\nbuild để chọn và chỉnh sửa.")).color(Color.lightGray).pad(10f).left();
+                return;
+            }
+
+            final WeaponPart p = design.weapons.get(idx);
+            Weapon w = Design.weaponOf(p);
+            TextureRegion icon = w.region != null && w.region.found() ? w.region : p.unit.uiIcon;
+            String name = w.name == null || w.name.isEmpty() ? "#" + (p.index + 1) : w.name;
+
+            t.table(h -> {
+                h.left();
+                h.image(icon).size(36f).padRight(8f);
+                h.add(p.unit.localizedName + "\n" + name).left();
+            }).growX().padBottom(4f).row();
+
+            final boolean hasPair = design.partnerIndex(idx) >= 0;
+            if(hasPair){
+                t.check(tr("workshop.editpair", "Sửa cả cặp đối xứng"), editPair, v -> editPair = v).left().row();
+            }
+
+            for(int i = 0; i < props.length; i++) propRow(t, idx, i, hasPair);
+
+            int m = design.modCount(idx);
+            t.add(tr("workshop.mods", "Điều chỉnh: ") + m + (m > 0 ? "  (+" + Math.round(modifyStep * 100f * m) + "%)" : ""))
+                .color(m > 0 ? Pal.accent : Color.lightGray).left().padTop(8f).row();
+
+            t.button(tr("workshop.delpart", "Xóa vũ khí này"), Icon.trash, () -> {
+                selectedPart = -1;
+                edit(d -> d.weapons.remove(idx));
+            }).growX().height(44f).padTop(6f);
+        }
+
+        protected void propRow(Table t, final int idx, final int prop, boolean hasPair){
+            final Prop pr = props[prop];
+            final float cur = design.value(idx, prop);
+            final boolean modified = design.weapons.get(idx).has(prop);
+            String label = (modified ? "[accent]" : "") + tr(pr.key, pr.def);
+
+            if(pr.bool){
+                CheckBox cb = t.check(label, cur >= 0.5f, v -> edit(d -> d.setProp(idx, prop, v ? 1f : 0f, editPair))).left().padTop(2f).get();
+                if(prop == PROP_ALTERNATE && !hasPair) cb.setDisabled(true);
+                t.row();
+                return;
+            }
+
+            t.add(label).left().padTop(6f).row();
+            t.table(r -> {
+                r.left();
+                r.button("-", Styles.flatt, () -> stepProp(idx, prop, -1)).size(40f);
+                r.add(formatProp(prop, cur)).width(86f).center();
+                r.button("+", Styles.flatt, () -> stepProp(idx, prop, 1)).size(40f);
+                if(modified){
+                    r.button(Icon.refresh, Styles.cleari, () -> edit(d -> d.resetProp(idx, prop, editPair))).size(40f);
+                }
+            }).left().row();
+        }
+
+        protected void stepProp(int idx, int prop, int dir){
+            Prop pr = props[prop];
+            float cur = design.value(idx, prop);
+            if(prop == PROP_ROTATION_LIMIT) cur = Math.min(cur, 360f);
+            final float next = Mathf.clamp(cur + dir * pr.step, pr.min, pr.max);
+            edit(d -> d.setProp(idx, prop, next, editPair));
+        }
+
         protected void donorHeader(Table t, UnitType u){
             t.table(r -> {
                 r.left();
@@ -1125,7 +1437,7 @@ public class UnitWorkshop extends UnitFactory{
         protected String countText(String label, int n, int cap){
             boolean over = n > cap;
             return (over ? "[orange]" : "") + label + ": " + n + "/" + cap
-                + (over ? "  (+" + Math.round((overflowPenalty - 1f) * 100f) + "%)" : "");
+                + (over ? "  (vượt " + (n - cap) + ")" : "");
         }
 
         protected void capacityTable(Table t){
@@ -1166,14 +1478,13 @@ public class UnitWorkshop extends UnitFactory{
             final int cy = (int)(ly / cell);
             if(cx < 0 || cy < 0 || cx >= n || cy >= n) return;
 
-            //bấm vào vũ khí đã đặt = gỡ
-            for(int i = 0; i < design.weapons.size; i++){
-                WeaponPart p = design.weapons.get(i);
-                if(p.cx == cx && p.cy == cy){
-                    final int index = i;
-                    edit(d -> d.weapons.remove(index));
-                    return;
-                }
+            //bấm đúng ô có vũ khí = chọn để chỉnh sửa
+            int hit = design.partAt(cx, cy);
+            if(hit >= 0){
+                selectedPart = hit;
+                tabCategory = 3;
+                if(listFill != null) listFill.run();
+                return;
             }
 
             if(weaponBrush == null) return;
@@ -1181,10 +1492,18 @@ public class UnitWorkshop extends UnitFactory{
             final boolean flip = cx < n / 2; //nửa trái: lật sprite
 
             edit(d -> {
-                d.weapons.add(new WeaponPart(brush.unit, brush.index, cx, cy, flip));
                 int mx = n - 1 - cx;
-                if(mirrorPlace && mx != cx){
-                    d.weapons.add(new WeaponPart(brush.unit, brush.index, mx, cy, !flip));
+                boolean pair = mirrorPlace && mx != cx && d.partAt(mx, cy) < 0;
+                int pid = pair ? d.nextPair() : -1;
+
+                WeaponPart a = new WeaponPart(brush.unit, brush.index, cx, cy, flip);
+                a.pair = pid;
+                d.weapons.add(a);
+
+                if(pair){
+                    WeaponPart b = new WeaponPart(brush.unit, brush.index, mx, cy, !flip);
+                    b.pair = pid;
+                    d.weapons.add(b);
                 }
             });
         }
@@ -1221,6 +1540,15 @@ public class UnitWorkshop extends UnitFactory{
                 if(design.template != null){
                     Draw.color(Color.white, 0.85f);
                     drawDesign(design, x + w / 2f, y + w / 2f, cell);
+                }
+
+                //ô của từng vũ khí (ô đang chọn sáng hơn)
+                for(int i = 0; i < design.weapons.size; i++){
+                    WeaponPart p = design.weapons.get(i);
+                    boolean sel = i == selectedPart;
+                    Draw.color(sel ? Pal.accent : Color.white, sel ? 1f : 0.5f);
+                    Lines.stroke(sel ? 2f : 1f);
+                    Lines.rect(x + p.cx * cell, y + p.cy * cell, cell, cell);
                 }
 
                 Draw.color(Pal.remove);
