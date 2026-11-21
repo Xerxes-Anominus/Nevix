@@ -22,6 +22,14 @@ public class NevixBlocks {
             itemCapacity = 500;
         }};
         
-        unitWorkshop = new UnitWorkshop("unit-workshop");
+        unitWorkshop = new UnitWorkshop("unit-workshop") {{
+            requirements(Category.units, ItemStack.with(Items.copper, 1));
+            
+            health = 6700;
+            size = 9;
+            
+            hasPower = true;
+            consumePower(20f);
+        }};
     }
 }
