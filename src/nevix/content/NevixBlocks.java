@@ -6,10 +6,11 @@ import mindustry.type.ItemStack;
 import mindustry.world.Block;
 import nevix.PromotionSys;
 import nevix.world.block.storage.VaultBlock;
+import nevix.world.block.unit.UnitWorkshop;
 
 public class NevixBlocks {
     public static Block
-    safe;
+    safe, unitWorkshop;
     
     public static void load() {
         safe = new VaultBlock("safe") {{
@@ -20,5 +21,7 @@ public class NevixBlocks {
             
             itemCapacity = 500;
         }};
+        
+        unitWorkshop = new UnitWorkshop("unit-workshop");
     }
 }
