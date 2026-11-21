@@ -15,8 +15,10 @@ import arc.scene.Element;
 import arc.scene.event.ClickListener;
 import arc.scene.event.InputEvent;
 import arc.scene.event.Touchable;
+import arc.scene.style.TextureRegionDrawable;
 import arc.scene.ui.Button;
 import arc.scene.ui.CheckBox;
+import arc.scene.ui.ImageButton;
 import arc.scene.ui.ScrollPane;
 import arc.scene.ui.TextButton;
 import arc.scene.ui.layout.Scl;
@@ -36,7 +38,6 @@ import mindustry.ctype.UnlockableContent;
 import mindustry.entities.abilities.Ability;
 import mindustry.entities.units.WeaponMount;
 import mindustry.game.EventType.UnitCreateEvent;
-import mindustry.gen.Building;
 import mindustry.gen.Groups;
 import mindustry.gen.Icon;
 import mindustry.gen.Unit;
@@ -78,7 +79,7 @@ import static mindustry.Vars.*;
  *  - Mẫu = templateShare (50%) giá và thời gian của unit đó.
  *  - Mỗi vũ khí = weaponShare (20%), mỗi ability = abilityShare (20%) của unit sở hữu nó.
  *  - Linh kiện thừa thứ x so với sức chứa của mẫu: 100 + 20x %.
- *  - Mỗi chỉnh sửa khác bản gốc của một vũ khí: +5%.
+ *  - Mỗi chỉnh sửa khác bản gốc của một vũ khí: +2% nếu có lợi, -2% nếu bất lợi (xem Prop.benefit).
  */
 public class UnitWorkshop extends UnitFactory{
     /** Phần giá / thời gian của unit gốc được tính cho Mẫu. */
@@ -89,8 +90,8 @@ public class UnitWorkshop extends UnitFactory{
     public float abilityShare = 0.2f;
     /** Linh kiện thừa thứ x (so với sức chứa của mẫu) có giá 100 + overflowStep * x * 100 %. */
     public float overflowStep = 0.2f;
-    /** Mỗi chỉnh sửa khác bản gốc của một vũ khí làm giá / thời gian của vũ khí đó tăng thêm chừng này. */
-    public float modifyStep = 0.05f;
+    /** Mỗi chỉnh sửa CÓ LỢI của một vũ khí tăng giá / thời gian của vũ khí đó chừng này; mỗi chỉnh sửa BẤT LỢI giảm chừng này. */
+    public float modifyStep = 0.02f;
     /** Item dùng tính giá khi không tìm thấy công thức của unit (unit của mod chẳng hạn). */
     public Item fallbackItem = Items.silicon;
     /** Số linh kiện tối đa mỗi loại (tối đa 255). */
@@ -242,13 +243,16 @@ public class UnitWorkshop extends UnitFactory{
     public static class Prop{
         public final String key, def;
         public final boolean bool, mirror;
+        /** 1: tăng giá trị là có lợi, -1: giảm giá trị là có lợi, 0: trung tính (đổi không ảnh hưởng giá). */
+        public final int benefit;
         public final float min, max, step;
 
-        public Prop(String key, String def, boolean bool, boolean mirror, float min, float max, float step){
+        public Prop(String key, String def, boolean bool, boolean mirror, int benefit, float min, float max, float step){
             this.key = key;
             this.def = def;
             this.bool = bool;
             this.mirror = mirror;
+            this.benefit = benefit;
             this.min = min;
             this.max = max;
             this.step = step;
@@ -257,14 +261,14 @@ public class UnitWorkshop extends UnitFactory{
 
     /** mirror = true: khi sửa cả cặp đối xứng thì bản bên kia nhận giá trị đảo dấu (góc). */
     public static final Prop[] props = {
-        new Prop("workshop.p.rotate", "Quay theo mục tiêu", true, false, 0, 1, 1),
-        new Prop("workshop.p.rotatespeed", "Tốc độ quay", false, false, 1, 60, 1),
-        new Prop("workshop.p.rotationlimit", "Giới hạn góc quay", false, false, 0, 360, 15),
-        new Prop("workshop.p.baserotation", "Góc gốc", false, true, -180, 180, 5),
-        new Prop("workshop.p.alternate", "Bắn luân phiên (cần cặp đối xứng)", true, false, 0, 1, 1),
-        new Prop("workshop.p.reload", "Thời gian nạp", false, false, 5, 600, 5),
-        new Prop("workshop.p.inaccuracy", "Độ lệch đạn", false, false, 0, 45, 1),
-        new Prop("workshop.p.shootcone", "Góc cho phép bắn", false, false, 1, 180, 1)
+        new Prop("workshop.p.rotate", "Quay theo mục tiêu", true, false, 1, 0, 1, 1),
+        new Prop("workshop.p.rotatespeed", "Tốc độ quay", false, false, 1, 1, 60, 1),
+        new Prop("workshop.p.rotationlimit", "Giới hạn góc quay", false, false, 1, 0, 360, 15),
+        new Prop("workshop.p.baserotation", "Góc gốc", false, true, 0, -180, 180, 5),
+        new Prop("workshop.p.alternate", "Bắn luân phiên", true, false, 0, 0, 1, 1),
+        new Prop("workshop.p.reload", "Thời gian nạp", false, false, -1, 5, 600, 5),
+        new Prop("workshop.p.inaccuracy", "Độ lệch đạn", false, false, -1, 0, 45, 1),
+        new Prop("workshop.p.shootcone", "Góc cho phép bắn", false, false, 1, 1, 180, 1)
     };
 
     public static float getValue(Weapon w, int prop){
@@ -341,6 +345,12 @@ public class UnitWorkshop extends UnitFactory{
             drawRegion(w.outlineRegion, wx, wy, scale, fl, rot);
             drawRegion(w.region, wx, wy, scale, fl, rot);
         }
+    }
+
+    /** Nửa cạnh sprite của vũ khí, tính bằng pixel game (= số ô trong vùng build). */
+    static float halfSize(Weapon w){
+        if(w.region == null || !w.region.found()) return 3f;
+        return Math.max(w.region.width, w.region.height) * Draw.scl / 2f;
     }
 
     static String abilityName(Ability a){
@@ -517,6 +527,28 @@ public class UnitWorkshop extends UnitFactory{
             return Integer.bitCount(weapons.get(idx).mask);
         }
 
+        /** +1: chỉnh sửa có lợi, -1: bất lợi, 0: chưa chỉnh hoặc thuộc tính trung tính. */
+        public int propScore(int idx, int prop){
+            WeaponPart p = weapons.get(idx);
+            if(!p.has(prop)) return 0;
+
+            float a = p.over[prop];
+            float b = defaultValue(idx, prop);
+            if(prop == PROP_ROTATION_LIMIT){
+                a = Math.min(a, 360f);
+                b = Math.min(b, 360f);
+            }
+            if(Math.abs(a - b) < 0.001f) return 0;
+            return (a > b ? 1 : -1) * props[prop].benefit;
+        }
+
+        /** (số chỉnh sửa có lợi) - (số chỉnh sửa bất lợi) của vũ khí idx. */
+        public int modScore(int idx){
+            int sum = 0;
+            for(int k = 0; k < props.length; k++) sum += propScore(idx, k);
+            return sum;
+        }
+
         /** Bỏ các chỉnh sửa mà giá trị đã trùng bản gốc (để không bị tính giá oan). */
         public void normalize(){
             for(int i = 0; i < weapons.size; i++){
@@ -634,7 +666,7 @@ public class UnitWorkshop extends UnitFactory{
 
         /**
          * Tổng giá. Linh kiện (đặt trước = dựng trước) thứ x vượt sức chứa của mẫu có giá 100 + 20x %;
-         * mỗi chỉnh sửa khác bản gốc của vũ khí cộng thêm 5% (cộng dồn với phần vượt, cùng tính trên giá gốc).
+         * mỗi chỉnh sửa có lợi của vũ khí +2%, mỗi chỉnh sửa bất lợi -2% (cộng dồn với phần vượt, cùng tính trên giá gốc).
          */
         public Cost cost(UnitWorkshop shop){
             Cost total = new Cost();
@@ -651,7 +683,8 @@ public class UnitWorkshop extends UnitFactory{
             }
             for(int i = 0; i < weapons.size; i++){
                 int x = Math.max(0, i + 1 - capW);
-                total.add(shop.weaponCost(weapons.get(i).unit), 1f + shop.overflowStep * x + shop.modifyStep * modCount(i));
+                float mult = 1f + shop.overflowStep * x + shop.modifyStep * modScore(i);
+                total.add(shop.weaponCost(weapons.get(i).unit), Math.max(0.1f, mult));
             }
             return total;
         }
@@ -756,6 +789,7 @@ public class UnitWorkshop extends UnitFactory{
         protected int selectedUnit = -1;
         protected int selectedPart = -1;
         protected boolean editPair = true;
+        protected int gridMode; //0: đặt vũ khí, 1: chọn vũ khí (bấm gần vũ khí là chọn được)
         protected Runnable listFill;
         protected int tabCategory;
         protected PartRef weaponBrush;
@@ -1246,6 +1280,15 @@ public class UnitWorkshop extends UnitFactory{
                 left.top();
                 left.add(new BuildGrid(cell)).size(n * cell).row();
                 left.table(t -> watch(t, () -> capacityTable(t))).growX().padTop(6f).row();
+                left.table(modes -> {
+                    modes.defaults().growX().height(40f).pad(1f);
+                    String[] mn = {tr("workshop.mode.place", "Đặt"), tr("workshop.mode.select", "Chọn")};
+                    for(int i = 0; i < mn.length; i++){
+                        final int mode = i;
+                        TextButton mb = modes.button(mn[i], Styles.clearTogglet, () -> gridMode = mode).get();
+                        mb.update(() -> mb.setChecked(gridMode == mode));
+                    }
+                }).growX().padTop(4f).row();
                 left.check(tr("workshop.mirror", "Đối xứng khi đặt vũ khí"), mirrorPlace, v -> mirrorPlace = v).left().padTop(4f).row();
                 left.table(btns -> {
                     btns.defaults().growX().height(44f).pad(2f);
@@ -1321,7 +1364,7 @@ public class UnitWorkshop extends UnitFactory{
             }else if(tabCategory == 3){
                 final Table body = new Table();
                 watch(body, () -> fillEdit(body));
-                t.add(body).growX().top();
+                t.add(body).width(232f).top().left();
             }else{
                 for(UnitType u : donors){
                     boolean head = false;
@@ -1346,13 +1389,30 @@ public class UnitWorkshop extends UnitFactory{
             }
         }
 
-        /** Bảng chỉnh sửa chi tiết vũ khí đang chọn (mỗi chỉnh sửa khác bản gốc: +5% giá và thời gian). */
+        /** Bảng chỉnh sửa chi tiết vũ khí đang chọn (mỗi chỉnh sửa có lợi +2%, bất lợi -2% giá và thời gian). */
         protected void fillEdit(Table t){
             t.top().left();
 
+            //danh sách vũ khí đã gắn: chọn ở đây thì không cần bấm trúng ô trong vùng build
+            if(!design.weapons.isEmpty()){
+                t.add(tr("workshop.placed", "Vũ khí đã gắn") + " (" + design.weapons.size + ")").color(Pal.accent).left().row();
+                t.table(g -> {
+                    g.left();
+                    for(int i = 0; i < design.weapons.size; i++){
+                        final int index = i;
+                        WeaponPart q = design.weapons.get(i);
+                        Weapon qw = Design.weaponOf(q);
+                        TextureRegion qi = qw.region != null && qw.region.found() ? qw.region : q.unit.uiIcon;
+                        ImageButton ib = g.button(new TextureRegionDrawable(qi), Styles.clearTogglei, 28f, () -> selectPart(index)).size(44f).get();
+                        ib.update(() -> ib.setChecked(selectedPart == index));
+                        if((i + 1) % 5 == 0) g.row();
+                    }
+                }).left().padBottom(6f).row();
+            }
+
             final int idx = selectedPart;
             if(idx < 0 || idx >= design.weapons.size){
-                t.add(tr("workshop.pickweapon", "Bấm vào ô có vũ khí trong vùng\nbuild để chọn và chỉnh sửa.")).color(Color.lightGray).pad(10f).left();
+                t.add(tr("workshop.pickweapon", "Chọn một vũ khí ở trên, hoặc dùng chế độ \"Chọn\" rồi bấm gần vũ khí trong vùng build.")).width(220f).wrap().color(Color.lightGray).left().pad(4f).row();
                 return;
             }
 
@@ -1364,7 +1424,7 @@ public class UnitWorkshop extends UnitFactory{
             t.table(h -> {
                 h.left();
                 h.image(icon).size(36f).padRight(8f);
-                h.add(p.unit.localizedName + "\n" + name).left();
+                h.add(p.unit.localizedName + "\n" + name).width(170f).wrap().left();
             }).growX().padBottom(4f).row();
 
             final boolean hasPair = design.partnerIndex(idx) >= 0;
@@ -1375,8 +1435,10 @@ public class UnitWorkshop extends UnitFactory{
             for(int i = 0; i < props.length; i++) propRow(t, idx, i, hasPair);
 
             int m = design.modCount(idx);
-            t.add(tr("workshop.mods", "Điều chỉnh: ") + m + (m > 0 ? "  (+" + Math.round(modifyStep * 100f * m) + "%)" : ""))
-                .color(m > 0 ? Pal.accent : Color.lightGray).left().padTop(8f).row();
+            int net = design.modScore(idx);
+            long pct = Math.round(modifyStep * 100f * net);
+            t.add(tr("workshop.mods", "Điều chỉnh: ") + m + "  (" + (pct > 0 ? "+" : "") + pct + "% giá & thời gian)")
+                .width(220f).wrap().color(pct > 0 ? Color.scarlet : pct < 0 ? Color.green : Color.lightGray).left().padTop(8f).row();
 
             t.button(tr("workshop.delpart", "Xóa vũ khí này"), Icon.trash, () -> {
                 selectedPart = -1;
@@ -1388,12 +1450,17 @@ public class UnitWorkshop extends UnitFactory{
             final Prop pr = props[prop];
             final float cur = design.value(idx, prop);
             final boolean modified = design.weapons.get(idx).has(prop);
-            String label = (modified ? "[accent]" : "") + tr(pr.key, pr.def);
+            //xanh = chỉnh có lợi (đắt hơn), đỏ = bất lợi (rẻ hơn), vàng = trung tính
+            int score = design.propScore(idx, prop);
+            String label = (!modified ? "" : score > 0 ? "[green]" : score < 0 ? "[scarlet]" : "[accent]") + tr(pr.key, pr.def);
 
             if(pr.bool){
                 CheckBox cb = t.check(label, cur >= 0.5f, v -> edit(d -> d.setProp(idx, prop, v ? 1f : 0f, editPair))).left().padTop(2f).get();
                 if(prop == PROP_ALTERNATE && !hasPair) cb.setDisabled(true);
                 t.row();
+                if(prop == PROP_ALTERNATE && !hasPair){
+                    t.add(tr("workshop.needpair", "(chỉ dùng được với cặp đối xứng)")).width(220f).wrap().color(Color.lightGray).left().row();
+                }
                 return;
             }
 
@@ -1472,19 +1539,51 @@ public class UnitWorkshop extends UnitFactory{
             }
         }
 
-        /** Tạo / gỡ vũ khí tại ô (cx, cy). */
+        protected void selectPart(int i){
+            selectedPart = i;
+            tabCategory = 3;
+            if(listFill != null) listFill.run();
+        }
+
+        /** fx, fy: toạ độ bấm tính theo ô. Chọn vũ khí gần nhất trong bán kính ~ nửa sprite (tối thiểu 3 ô). */
+        protected void selectNearest(float fx, float fy){
+            int best = -1;
+            float bestDst = Float.MAX_VALUE;
+            for(int i = 0; i < design.weapons.size; i++){
+                WeaponPart p = design.weapons.get(i);
+                float dst = Mathf.dst(p.cx + 0.5f - fx, p.cy + 0.5f - fy);
+                float reach = Math.max(3f, halfSize(Design.weaponOf(p)));
+                if(dst <= reach && dst < bestDst){
+                    best = i;
+                    bestDst = dst;
+                }
+            }
+
+            if(best >= 0){
+                selectPart(best);
+            }else{
+                selectedPart = -1;
+                if(tabCategory == 3 && listFill != null) listFill.run();
+            }
+        }
+
+        /** Đặt vũ khí tại ô (cx, cy), hoặc chọn vũ khí đã có. */
         protected void tapCell(float lx, float ly, float cell){
             final int n = areaSize();
             final int cx = (int)(lx / cell);
             final int cy = (int)(ly / cell);
             if(cx < 0 || cy < 0 || cx >= n || cy >= n) return;
 
-            //bấm đúng ô có vũ khí = chọn để chỉnh sửa
+            //chế độ Chọn: chọn vũ khí gần chỗ bấm nhất (không cần bấm trúng ô)
+            if(gridMode == 1){
+                selectNearest(lx / cell, ly / cell);
+                return;
+            }
+
+            //chế độ Đặt: bấm trúng ô đang có vũ khí = chọn nó
             int hit = design.partAt(cx, cy);
             if(hit >= 0){
-                selectedPart = hit;
-                tabCategory = 3;
-                if(listFill != null) listFill.run();
+                selectPart(hit);
                 return;
             }
 
@@ -1550,6 +1649,13 @@ public class UnitWorkshop extends UnitFactory{
                     Draw.color(sel ? Pal.accent : Color.white, sel ? 1f : 0.5f);
                     Lines.stroke(sel ? 2f : 1f);
                     Lines.rect(x + p.cx * cell, y + p.cy * cell, cell, cell);
+
+                    if(sel){
+                        float half = halfSize(Design.weaponOf(p));
+                        Draw.color(Pal.accent, 0.6f);
+                        Lines.stroke(1f);
+                        Lines.rect(x + (p.cx + 0.5f - half) * cell, y + (p.cy + 0.5f - half) * cell, half * 2f * cell, half * 2f * cell);
+                    }
                 }
 
                 Draw.color(Pal.remove);
