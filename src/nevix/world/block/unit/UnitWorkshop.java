@@ -38,6 +38,7 @@ import mindustry.ctype.UnlockableContent;
 import mindustry.entities.abilities.Ability;
 import mindustry.entities.units.WeaponMount;
 import mindustry.game.EventType.UnitCreateEvent;
+import mindustry.gen.Building;
 import mindustry.gen.Groups;
 import mindustry.gen.Icon;
 import mindustry.gen.Unit;
