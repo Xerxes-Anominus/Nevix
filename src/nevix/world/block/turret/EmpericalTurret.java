@@ -1,6 +1,7 @@
 package nevix.world.block.turret;
 
 import arc.Core;
+import arc.Events;
 import arc.graphics.Blending;
 import arc.graphics.Color;
 import arc.graphics.g2d.Draw;
@@ -22,16 +23,22 @@ import mindustry.content.Items;
 import mindustry.entities.Effect;
 import mindustry.entities.Units;
 import mindustry.entities.bullet.BulletType;
+import mindustry.entities.units.AIController;
+import mindustry.game.EventType.WorldLoadEvent;
 import mindustry.game.Team;
 import mindustry.gen.Building;
+import mindustry.gen.Call;
+import mindustry.gen.Groups;
 import mindustry.gen.Healthc;
 import mindustry.gen.Teamc;
 import mindustry.gen.Unit;
+import mindustry.gen.UnitEntity;
 import mindustry.graphics.Drawf;
 import mindustry.graphics.Layer;
 import mindustry.graphics.Pal;
 import mindustry.type.ItemStack;
 import mindustry.type.StatusEffect;
+import mindustry.type.UnitType;
 import mindustry.ui.Bar;
 import mindustry.world.meta.Stat;
 import mindustry.world.meta.StatUnit;
@@ -71,6 +78,10 @@ public class EmpericalTurret extends NevixTurret {
     }
 
     public static StatusEffect swordSlow;
+    /** Unit thật của Sword Spirit: địch có thể target + đạn/vũ khí gây sát thương lên nó. */
+    public static UnitType swordSpiritType;
+    /** id các Spirit đang được turret quản lý (để dọn unit mồ côi sau khi load save). */
+    public static final IntSet spiritIds = new IntSet();
     public BulletType alloyAmmo;
 
     public float[]
@@ -391,6 +402,41 @@ public class EmpericalTurret extends NevixTurret {
             }};
         }
 
+        if (swordSpiritType == null) {
+            swordSpiritType = new UnitType("emperical-sword-spirit") {
+                {
+                    constructor = UnitEntity::create;
+                    flying = true;
+                    lowAltitude = true;
+                    hitSize = 14f;
+                    health = 1000f;
+                    armor = 0f;
+                    useUnitCap = false;
+                    createWreck = false;
+                    createScorch = false;
+                    playerControllable = false;
+                }
+                
+                @Override
+                public void draw(Unit unit) {
+                    SwirdyTurret.SwirdyPalette p = pal();
+                    float face = unit.rotation;
+
+                    SwirdyTurret.drawHalo(p, unit.x, unit.y, face, Time.time, 1f);
+                    Draw.z(Layer.bullet + 3f);
+                    drawBlade(unit.x + Angles.trnsx(face, 6f), unit.y + Angles.trnsy(face, 6f), face, 20f, 1f, p);
+
+                    float w = 12f, f = Mathf.clamp(unit.health / Math.max(1f, unit.maxHealth));
+                    Draw.color(Color.black, 0.7f);
+                    Fill.rect(unit.x, unit.y + 12f, w, 2f);
+                    Draw.color(p.mid);
+                    Fill.rect(unit.x - w / 2f + w * f / 2f, unit.y + 12f, w * f, 2f);
+                    Draw.reset();
+                }
+            };
+            Events.on(WorldLoadEvent.class, e -> spiritIds.clear());
+        }
+
         upgradeBranch();
     }
 
@@ -479,6 +525,7 @@ public class EmpericalTurret extends NevixTurret {
         public float haloFade;
         public Seq<Blade> blades = new Seq<>();
         public Seq<Spirit> spirits = new Seq<>();
+        public float orphanTimer;
         
         @Override
         public void getStats(Table table) {
@@ -616,6 +663,12 @@ public class EmpericalTurret extends NevixTurret {
             for (int i = 0; i < blades.size; i++) blades.get(i).update(d);
             blades.removeAll(b -> b.dead);
             updateSpirits(d);
+
+            orphanTimer += d;
+            if (orphanTimer >= 120f) {
+                orphanTimer = 0f;
+                Groups.unit.each(u -> u.type == swordSpiritType && !spiritIds.contains(u.id), u -> Call.unitDespawn(u));
+            }
         }
 
         @Override
@@ -988,16 +1041,37 @@ public class EmpericalTurret extends NevixTurret {
             return 1f + SPIRIT_POINT_BONUS * Math.max(0, spiritPoints - spawnPoints);
         }
 
+        /** Turret bị phá/gỡ => gỡ luôn các Spirit (unit thật) đang sống. */
+        @Override
+        public void onRemoved() {
+            super.onRemoved();
+            if (net.client()) return;
+            for (int i = 0; i < spirits.size; i++) spirits.get(i).despawn();
+            spirits.clear();
+        }
+
         public class Spirit {
-            float px = x, py = y, health, stored;
+            float px = x, py = y, stored;
             float slashTimer, cd1, cd2, cd3, boostTimer, comboTimer;
             float sx, sy, ex, ey, dashT;
             int comboLeft;
             boolean dead, fading;
-            float facing, fade;
+            float facing;
+            /** Unit thật: máu, hitbox, bị target/bị đạn bắn đều do Mindustry xử lý. */
+            Unit body;
 
             Spirit() {
-                health = maxHp();
+                body = swordSpiritType.create(team);
+                body.set(px, py);
+                body.maxHealth = maxHp();
+                body.health = maxHp();
+                
+                body.controller(new AIController() {
+                    @Override public void updateMovement() {}
+                    @Override public void updateTargeting() {}
+                });
+                body.add();
+                spiritIds.add(body.id);
             }
 
             float maxHp() {
@@ -1012,30 +1086,53 @@ public class EmpericalTurret extends NevixTurret {
                 return baseReload() / (boostTimer > 0f ? 1.5f : 1f);
             }
             
+            /** Gỡ Spirit êm (hết đạn/điện): không tính là bị địch hạ. */
             void die() {
-                if (fading) return;
+                if (fading || dead) return;
                 fading = true;
+                dead = true;
                 spiritRespawns.add(0f);
-                fade = SPIRIT_FADE_TIME;
-                dashT = 0f;
-                comboLeft = 0;
+                spiritDeathFx.at(body.x, body.y, Mathf.random(45f), pal().light);
+                despawn();
+            }
+
+            /** Unit bị địch hạ thật. */
+            void lost() {
+                if (dead) return;
+                fading = true;
+                dead = true;
+                spiritIds.remove(body.id);
+                spiritRespawns.add(0f);
+                spiritDeathFx.at(px, py, Mathf.random(45f), pal().light);
+            }
+
+            void despawn() {
+                spiritIds.remove(body.id);
+                if (body.isAdded()) Call.unitDespawn(body);
             }
 
             void heal(float amt) {
-                float add = Math.min(maxHp() - health, amt);
-                health += add;
+                float add = Math.min(maxHp() - body.health, amt);
+                body.health += add;
                 stored = Math.min(stored + (amt - add), maxHp() * 0.75f);
             }
 
             void update(float dt) {
-                if (fading) {
-                    fade -= dt;
-                    if (fade <= 0f) {
-                        spiritDeathFx.at(px, py, Mathf.random(45f), pal().light);
-                        dead = true;
-                    }
+                if (dead) return;
+                if (!body.isAdded() || body.dead) {
+                    lost();
                     return;
                 }
+                body.maxHealth = maxHp();
+                step(dt);
+                if (!dead) {
+                    body.set(px, py);
+                    body.vel.setZero();
+                    body.rotation = facing;
+                }
+            }
+
+            void step(float dt) {
                 cd1 = Math.max(0f, cd1 - dt);
                 cd2 = Math.max(0f, cd2 - dt);
                 cd3 = Math.max(0f, cd3 - dt);
@@ -1046,14 +1143,14 @@ public class EmpericalTurret extends NevixTurret {
                 Units.nearbyEnemies(team, px - 24f, py - 24f, 48f, 48f, u -> {
                     if (u.isValid()) taken[0] += SPIRIT_CONTACT_DPS / 60f * dt;
                 });
-                health -= taken[0];
-                if (health < maxHp() && stored > 0f) {
-                    float h = Math.min(stored, maxHp() - health);
-                    health += h;
+                if (taken[0] > 0f) body.damage(taken[0]);
+                if (body.health < maxHp() && stored > 0f) {
+                    float h = Math.min(stored, maxHp() - body.health);
+                    body.health += h;
                     stored -= h;
                 }
-                if (health <= 0f) {
-                    die();
+                if (body.dead) {
+                    lost();
                     return;
                 }
 
@@ -1170,24 +1267,15 @@ public class EmpericalTurret extends NevixTurret {
                 blades.add(b);
             }
 
+            /** Máu/thanh máu/kiếm do UnitType.draw lo; ở đây chỉ vẽ thanh máu dự trữ (stored). */
             void draw() {
+                if (stored <= 0f || !body.isAdded()) return;
                 SwirdyTurret.SwirdyPalette p = pal();
-                float al = fading ? Mathf.clamp(fade / SPIRIT_FADE_TIME) : 1f;
-                
-                SwirdyTurret.drawHalo(p, px, py, facing, Time.time, al);
+                float w = 12f;
                 Draw.z(Layer.bullet + 3f);
-                drawBlade(px + Angles.trnsx(facing, 6f), py + Angles.trnsy(facing, 6f), facing, 20f, al, p);
-
-                float w = 12f, f = Mathf.clamp(health / maxHp());
-                Draw.color(Color.black, 0.7f * al);
-                Fill.rect(px, py + 12f, w, 2f);
-                Draw.color(p.mid, al);
-                Fill.rect(px - w / 2f + w * f / 2f, py + 12f, w * f, 2f);
-                if (stored > 0f) {
-                    Draw.color(p.core, 0.8f * al);
-                    float sf = Mathf.clamp(stored / (maxHp() * 0.75f));
-                    Fill.rect(px - w / 2f + w * sf / 2f, py + 14.2f, w * sf, 1.2f);
-                }
+                Draw.color(p.core, 0.8f);
+                float sf = Mathf.clamp(stored / (maxHp() * 0.75f));
+                Fill.rect(px - w / 2f + w * sf / 2f, py + 14.2f, w * sf, 1.2f);
                 Draw.reset();
             }
         }
