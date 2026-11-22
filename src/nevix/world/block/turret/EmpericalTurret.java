@@ -67,7 +67,12 @@ public class EmpericalTurret extends NevixTurret {
         HALO_FADE_TIME = 60f,
         SPIRIT_MIN_EFFICIENCY = 0.05f,
         SPIRIT_SPEED = 3f,
-        SPIRIT_CONTACT_DPS = 15f;
+        SPIRIT_CONTACT_DPS = 15f,
+        SPIRIT_SWORD_LEN = 30f,
+        SPIRIT_SWORD_HAND = 6f,
+        SPIRIT_SWING_TIME = 8f,
+        SPIRIT_SWING_ARC = 70f,
+        SPIRIT_TURN_SPEED = 20f;
     
     public static final int SWORDS_PER_ITEM = 3;
     
@@ -78,9 +83,7 @@ public class EmpericalTurret extends NevixTurret {
     }
 
     public static StatusEffect swordSlow;
-    /** Unit thật của Sword Spirit: địch có thể target + đạn/vũ khí gây sát thương lên nó. */
     public static UnitType swordSpiritType;
-    /** id các Spirit đang được turret quản lý (để dọn unit mồ côi sau khi load save). */
     public static final IntSet spiritIds = new IntSet();
     public BulletType alloyAmmo;
 
@@ -299,6 +302,12 @@ public class EmpericalTurret extends NevixTurret {
         Draw.reset();
     }),
     
+    swordTrailFx = new Effect(12f, 120f, e -> {
+        Draw.z(Layer.bullet + 2.9f);
+        drawBlade(e.x, e.y, e.rotation, SPIRIT_SWORD_LEN, 0.5f * e.fout(), pal());
+        Draw.reset();
+    }),
+    
     spiritSpawnFx = new Effect(36f, 200f, e -> {
         SwirdyTurret.SwirdyPalette p = pal();
         float fin = e.fin(), fout = e.fout();
@@ -420,11 +429,13 @@ public class EmpericalTurret extends NevixTurret {
                 @Override
                 public void draw(Unit unit) {
                     SwirdyTurret.SwirdyPalette p = pal();
-                    float face = unit.rotation;
+                    float ang = unit.rotation;
+                    float hx = unit.x + Angles.trnsx(ang, SPIRIT_SWORD_HAND);
+                    float hy = unit.y + Angles.trnsy(ang, SPIRIT_SWORD_HAND);
 
-                    SwirdyTurret.drawHalo(p, unit.x, unit.y, face, Time.time, 1f);
+                    SwirdyTurret.drawHalo(p, unit.x, unit.y, ang, Time.time, 1f);
                     Draw.z(Layer.bullet + 3f);
-                    drawBlade(unit.x + Angles.trnsx(face, 6f), unit.y + Angles.trnsy(face, 6f), face, 20f, 1f, p);
+                    drawBlade(hx, hy, ang, SPIRIT_SWORD_LEN, 1f, p);
 
                     float w = 12f, f = Mathf.clamp(unit.health / Math.max(1f, unit.maxHealth));
                     Draw.color(Color.black, 0.7f);
@@ -1003,7 +1014,7 @@ public class EmpericalTurret extends NevixTurret {
         }
         
         public boolean spiritsAllowed() {
-            return spiritTier > 0 && hasAmmo() && efficiency > SPIRIT_MIN_EFFICIENCY;
+            return spiritTier > 0 && enabled && hasAmmo();
         }
 
         void updateSpirits(float dt) {
@@ -1040,8 +1051,7 @@ public class EmpericalTurret extends NevixTurret {
             int spawnPoints = SPIRIT_COUNT[SPIRIT_COUNT.length - 1];
             return 1f + SPIRIT_POINT_BONUS * Math.max(0, spiritPoints - spawnPoints);
         }
-
-        /** Turret bị phá/gỡ => gỡ luôn các Spirit (unit thật) đang sống. */
+        
         @Override
         public void onRemoved() {
             super.onRemoved();
@@ -1057,15 +1067,17 @@ public class EmpericalTurret extends NevixTurret {
             int comboLeft;
             boolean dead, fading;
             float facing;
-            /** Unit thật: máu, hitbox, bị target/bị đạn bắn đều do Mindustry xử lý. */
+            float rot;
+            float swingT, swingSide = 1f;
+            IntSet swingHit = new IntSet();
             Unit body;
 
             Spirit() {
+                facing = rot = rotation;
                 body = swordSpiritType.create(team);
                 body.set(px, py);
                 body.maxHealth = maxHp();
                 body.health = maxHp();
-                
                 body.controller(new AIController() {
                     @Override public void updateMovement() {}
                     @Override public void updateTargeting() {}
@@ -1086,7 +1098,6 @@ public class EmpericalTurret extends NevixTurret {
                 return baseReload() / (boostTimer > 0f ? 1.5f : 1f);
             }
             
-            /** Gỡ Spirit êm (hết đạn/điện): không tính là bị địch hạ. */
             void die() {
                 if (fading || dead) return;
                 fading = true;
@@ -1095,8 +1106,7 @@ public class EmpericalTurret extends NevixTurret {
                 spiritDeathFx.at(body.x, body.y, Mathf.random(45f), pal().light);
                 despawn();
             }
-
-            /** Unit bị địch hạ thật. */
+            
             void lost() {
                 if (dead) return;
                 fading = true;
@@ -1126,10 +1136,31 @@ public class EmpericalTurret extends NevixTurret {
                 body.maxHealth = maxHp();
                 step(dt);
                 if (!dead) {
+                    updateSword(dt);
                     body.set(px, py);
                     body.vel.setZero();
-                    body.rotation = facing;
+                    body.rotation = rot;
                 }
+            }
+            
+            void updateSword(float dt) {
+                if (swingT <= 0f) {
+                    rot = Angles.moveToward(rot, facing, SPIRIT_TURN_SPEED * dt);
+                    return;
+                }
+                swingT = Math.max(0f, swingT - dt);
+                float f = 1f - swingT / SPIRIT_SWING_TIME;
+                rot = facing + Mathf.lerp(-SPIRIT_SWING_ARC, SPIRIT_SWING_ARC, Interp.pow2Out.apply(f)) * swingSide;
+
+                float hx = px + Angles.trnsx(rot, SPIRIT_SWORD_HAND);
+                float hy = py + Angles.trnsy(rot, SPIRIT_SWORD_HAND);
+                float reach = SPIRIT_SWORD_LEN * 0.85f;
+                float tx = hx + Angles.trnsx(rot, reach);
+                float ty = hy + Angles.trnsy(rot, reach);
+
+                float dealt = lineDamageOnce(hx, hy, tx, ty, 10f, dmg(), swingHit);
+                if (dealt > 0f) heal(dealt * 0.05f);
+                swordTrailFx.at(hx, hy, rot, pal().light);
             }
 
             void step(float dt) {
@@ -1226,6 +1257,7 @@ public class EmpericalTurret extends NevixTurret {
                     py = ty;
                 } else {
                     float a = Angles.angle(px, py, tx, ty);
+                    facing = a;
                     px += Angles.trnsx(a, step);
                     py += Angles.trnsy(a, step);
                 }
@@ -1239,14 +1271,11 @@ public class EmpericalTurret extends NevixTurret {
                 dashT = 12f;
                 launchFx.at(sx, sy, facing, pal().light);
             }
-
+            
             void slash() {
-                float cx = px + Angles.trnsx(facing, 12f);
-                float cy = py + Angles.trnsy(facing, 12f);
-                float dealt = areaDamage(cx, cy, 22f, dmg(), false);
-                
-                SwirdyTurret.slashFx.at(px, py, facing, pal().light, new float[]{Mathf.randomSign(), 4f * tilesize, 38f, PAL, 0.6f});
-                heal(dealt * 0.05f);
+                swingSide = -swingSide;
+                swingT = SPIRIT_SWING_TIME;
+                swingHit.clear();
             }
             
             void spawnSkillBlade(Teamc tgt) {
@@ -1266,8 +1295,7 @@ public class EmpericalTurret extends NevixTurret {
                 b.merge = false;
                 blades.add(b);
             }
-
-            /** Máu/thanh máu/kiếm do UnitType.draw lo; ở đây chỉ vẽ thanh máu dự trữ (stored). */
+            
             void draw() {
                 if (stored <= 0f || !body.isAdded()) return;
                 SwirdyTurret.SwirdyPalette p = pal();
